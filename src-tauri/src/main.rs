@@ -303,7 +303,57 @@ fn get_container_status(container_id: &str) -> Result<Value> {
     }
 }
 
+// --- Get status of all containers --- //
+#[tauri::command]
+fn list_distrobox_containers() -> Result<Vec<String>> {
+    match run_command("distrobox", &["list", "--verbose"]) {
+        Ok(output) => {
+            if output.is_empty() {
+                Ok(vec![])
+            } else {
+                Ok(output
+                    .lines()
+                    .filter(|line| !line.trim().is_empty())
+                    .map(|line| line.split_whitespace().next().unwrap_or("").to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect())
+            }
+        }
+        Err(_) => Ok(vec![]),
+    }
+}
 
+fn get_all_containers_status() -> Result<Vec<Value>> {
+    let distrobox_ids = list_distrobox_containers()?;
+    let containers = list_containers()?;
+    
+    let container_dict: HashMap<String, Value> = containers
+        .into_iter()
+        .filter_map(|container| {
+            let id = container["Id"].as_str()?;
+            Some((id[..12].to_string(), container))
+        })
+        .collect();
+
+    let matching_ids: HashSet<_> = distrobox_ids
+        .into_iter()
+        .filter(|id| container_dict.contains_key(id))
+        .collect();
+
+    if matching_ids.is_empty() {
+        return Ok(vec![json!({"error": "No matching containers found."})]);
+    }
+
+    let mut container_statuses = Vec::new();
+    
+    for container_id in matching_ids {
+        match get_container_status(&container_id) {
+            Ok(status) => container_statuses.push(json!({ "id": container_id, "status": status })),
+            Err(_) => container_statuses.push(json!({ "id": container_id, "error": "Failed to retrieve status" })),
+        }
+    }
+    Ok(container_statuses)
+}
 
 // --- Get supported images --- //
 #[tauri::command]
