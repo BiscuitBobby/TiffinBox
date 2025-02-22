@@ -1,91 +1,58 @@
-import PropTypes from "prop-types";
 import { useState } from "react";
+import { ChevronLeft, ChevronRight, Search, Plus } from "lucide-react";
+import { CreateContainerModal } from "./create-container-modal";
 
-function LeftSidebar({ isCollapsed, onToggle }) {
+export function LeftSidebar({ isCollapsed, onToggle }) {
   const [isSearchActive, setIsSearchActive] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  const handleAddContainer = () => {
+    setIsModalOpen(true);
+  };
 
-  // Toggle search bar visibility
-  const handleSearchToggle = () => {
-    setIsSearchActive(!isSearchActive);
+  const handleCreateContainer = (containerData) => {
+    console.log("Creating container with data:", containerData);
   };
 
   return (
-    <div className="flex flex-col bg-gray-800 text-white p-4 h-full shadow-lg transition-all duration-300 ease-in-out">
-      {/* Sidebar Main Section */}
-      <div
-        className={`flex flex-col bg-gray-700 p-4 rounded-lg transition-all duration-300 ${
-          isCollapsed ? "w-20" : "w-64"
-        }`}
-      >
-        <div className="flex justify-between items-center mb-4">
-          <h2 className={`text-lg font-semibold ${isCollapsed ? "hidden" : ""}`}>
-            Containers
-          </h2>
-          <button
-            className="text-white text-xl focus:outline-none"
-            onClick={onToggle}
-          >
-            {isCollapsed ? (
-              <span>&gt;</span> // Collapse arrow
-            ) : (
-              <span>&lt;</span> // Expand arrow
-            )}
+    <div className={`text-white transition-all duration-300 ease-in-out p-4 shadow-lg rounded-r-lg overflow-hidden flex flex-col gap-14`}>
+      <div className={`bg-gray-800 p-4 rounded-xl duration-300 ease-in-out mb-6 ${isCollapsed ? "w-20" : "w-64"}`}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className={`text-lg font-semibold ${isCollapsed ? "hidden" : "block"}`}>Containers</h2>
+          <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors" onClick={handleAddContainer}>
+            <Plus className="h-4 w-4" />
           </button>
         </div>
-
-        <div className="flex items-center justify-between mb-4">
-          <button
-            className="text-white text-xl focus:outline-none"
-            onClick={onToggle}
-          >
-            🔍
+        
+        <div className="mb-4 flex items-center">
+          <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors" onClick={() => setIsSearchActive(!isSearchActive)}>
+            <Search className="h-4 w-4" />
           </button>
-          {!isCollapsed && (
+          {!isCollapsed && isSearchActive && (
             <input
               type="text"
               placeholder="Search containers..."
-              className="bg-gray-600 text-white p-2 rounded-md w-full"
+              className="w-full bg-gray-700 text-white rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-600"
             />
           )}
         </div>
-
-        <button
-          className="text-white text-xl focus:outline-none mb-4"
-          onClick={handleSearchToggle}
-        >
-          {/* Optional Search Icon */}
-        </button>
-
-        <div className="overflow-y-auto flex-grow">
-          {/* Container list goes here */}
-        </div>
+        <div className="h-[calc(100vh-8rem)] overflow-y-auto">{/* Container list goes here */}</div>
       </div>
-
-      {/* Lower Part with Icons (Fixed and Scrollable) */}
-      <div className="bg-gray-700 p-4 mt-4 rounded-lg overflow-y-auto flex-grow">
-        <div className="flex flex-col gap-4">
+      
+      {/* Distro Icons */}
+      <div className="bg-gray-800 flex flex-col space-y-4 h-[calc(70vh)] rounded-xl overflow-y-auto w-20">
+        <div className="space-y-4 flex-grow overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
           {["Ubuntu", "Fedora", "Debian", "Arch", "Mint"].map((distro, index) => (
-            <div
-              key={index}
-              className="relative group flex items-center justify-center space-x-2 p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-all ease-in-out"
-            >
-              <div className="w-12 h-12 bg-gray-500 rounded-full flex items-center justify-center text-xl font-bold text-white">
+            <div key={index} className="relative group flex items-center justify-center space-x-2 p-3 rounded-lg cursor-pointer hover:bg-gray-700 transition-all">
+              <div className="w-12 h-12 bg-gray-600 rounded-full flex items-center justify-center text-xl font-bold text-white">
                 <span>{distro.charAt(0)}</span>
               </div>
-              <span className="absolute left-full ml-2 hidden group-hover:block bg-gray-600 text-white p-2 rounded-md shadow-md">
-                {distro}
-              </span>
             </div>
           ))}
         </div>
       </div>
+      
+      <CreateContainerModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleCreateContainer} />
     </div>
   );
 }
-LeftSidebar.propTypes = {
-  isCollapsed: PropTypes.bool.isRequired,
-  onToggle: PropTypes.func.isRequired,
-};
-
-export default LeftSidebar;
-
