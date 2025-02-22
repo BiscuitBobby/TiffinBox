@@ -1,7 +1,7 @@
-"use client"
-
-import { Play, Square, RefreshCw, Terminal, CircleCheck, KeyRound, Cog } from "lucide-react"
+import {  CircleCheck, KeyRound, Cog } from "lucide-react"
 import { OperationButtonTray } from "./operation-button-tray"
+
+import PropTypes from 'prop-types';
 
 export default function ContainerCard({ name, icon, status }) {
   return (
@@ -33,8 +33,15 @@ export default function ContainerCard({ name, icon, status }) {
               <span>Settings</span>
             </button>
           </div>
+   
         </div>
       </div>
     </div>
   )
+}
+
+ContainerCard.propTypes = {
+  name: PropTypes.string.isRequired,
+  icon: PropTypes.string.isRequired,
+  status: PropTypes.string.isRequired,
 }

@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Search, Plus } from "lucide-react";
+import PropTypes from 'prop-types';
+import { Search, Plus } from "lucide-react";
 import { CreateContainerModal } from "./create-container-modal";
 
-export function LeftSidebar({ isCollapsed, onToggle }) {
+export default function LeftSidebar({ isCollapsed, onToggle }) {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
@@ -14,45 +15,149 @@ export function LeftSidebar({ isCollapsed, onToggle }) {
     console.log("Creating container with data:", containerData);
   };
 
+ const  handleSearchButton = ()=>{
+  if(!isModalOpen){
+    onToggle();
+    setIsSearchActive(!isSearchActive);}
+    else{
+      setIsSearchActive(!isSearchActive);
+    }
+  }
+  const distros = [
+    { name: "Ubuntu", color: "bg-orange-500" },
+    { name: "Fedora", color: "bg-blue-500" },
+    { name: "Debian", color: "bg-red-500" },
+    { name: "Arch", color: "bg-cyan-500" },
+    { name: "Mint", color: "bg-green-500" }
+  ];
+
   return (
-    <div className={`text-white transition-all duration-300 ease-in-out p-4 shadow-lg rounded-r-lg overflow-hidden flex flex-col gap-14`}>
-      <div className={`bg-gray-800 p-4 rounded-xl duration-300 ease-in-out mb-6 ${isCollapsed ? "w-20" : "w-64"}`}>
+    <div className={`
+      flex flex-col h-screen
+      border-r border-zinc-800/50
+      bg-zinc-900/50
+      backdrop-blur-xl
+      transition-all duration-300 ease-out
+      p-4
+      gap-4
+    `}>
+      {/* Upper Section */}
+      <div className={`
+        bg-zinc-800/50
+        rounded-xl p-4
+        ${isCollapsed ? "w-20" : "w-72"}
+        transition-all duration-300 ease-out
+      `}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className={`text-lg font-semibold ${isCollapsed ? "hidden" : "block"}`}>Containers</h2>
-          <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors" onClick={handleAddContainer}>
-            <Plus className="h-4 w-4" />
-          </button>
+          {!isCollapsed && (
+            <h2 className="text-lg font-semibold text-zinc-100">Containers</h2>
+          )}
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={handleAddContainer}
+              className="p-2 text-zinc-400 hover:text-orange-400 hover:bg-zinc-700/50
+                rounded-lg transition-all duration-200"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+           
+          </div>
         </div>
         
-        <div className="mb-4 flex items-center">
-          <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors" onClick={() => setIsSearchActive(!isSearchActive)}>
-            <Search className="h-4 w-4" />
+        <div className="flex items-center gap-2">
+          <button 
+            className="p-2 text-zinc-400 hover:text-orange-400 hover:bg-zinc-700/50
+              rounded-lg transition-all duration-200 flex items-center justify-center "
+            onClick={handleSearchButton}
+          >
+            <Search className="h-5 w-5" />
+            
           </button>
-          {!isCollapsed && isSearchActive && (
+          {!isCollapsed && (
             <input
               type="text"
               placeholder="Search containers..."
-              className="w-full bg-gray-700 text-white rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-600"
+              className="w-full bg-zinc-800/50 text-zinc-100 rounded-xl px-4 py-2
+                focus:outline-none focus:ring-2 focus:ring-orange-500/50
+                border border-zinc-700/50
+                placeholder-zinc-500"
             />
           )}
         </div>
-        <div className="h-[calc(100vh-8rem)] overflow-y-auto">{/* Container list goes here */}</div>
       </div>
-      
-      {/* Distro Icons */}
-      <div className="bg-gray-800 flex flex-col space-y-4 h-[calc(70vh)] rounded-xl overflow-y-auto w-20">
-        <div className="space-y-4 flex-grow overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-          {["Ubuntu", "Fedora", "Debian", "Arch", "Mint"].map((distro, index) => (
-            <div key={index} className="relative group flex items-center justify-center space-x-2 p-3 rounded-lg cursor-pointer hover:bg-gray-700 transition-all">
-              <div className="w-12 h-12 bg-gray-600 rounded-full flex items-center justify-center text-xl font-bold text-white">
-                <span>{distro.charAt(0)}</span>
+
+      {/* Distro Icons Section */}
+      <div className="
+        flex-1
+        bg-zinc-800/50
+        rounded-xl
+        overflow-hidden
+        w-20
+      ">
+        <div className="
+          h-full
+          overflow-y-auto
+          scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent
+          px-2 py-4
+        ">
+          <div className="flex flex-col items-center space-y-4">
+            {distros.map((distro, index) => (
+              <div
+                key={index}
+                className="group relative w-full flex justify-center"
+              >
+                <div className={`
+                  w-12 h-12
+                  ${distro.color}
+                  bg-opacity-85
+                  rounded-xl
+                  flex items-center justify-center
+                  text-white font-medium text-lg
+                  shadow-lg shadow-black/10
+                  hover:scale-105
+                  hover:shadow-xl
+                  hover:shadow-black/20
+                  transition-all duration-200
+                  cursor-pointer
+                  ring-1 ring-white/10
+                  hover:ring-white/20
+                `}>
+                  {distro.name[0]}
+                </div>
+
+                {/* Hover tooltip */}
+                <div className="
+                  absolute left-full ml-2 z-50
+                  hidden group-hover:block
+                  bg-zinc-800/95
+                  backdrop-blur-sm
+                  text-zinc-100
+                  px-3 py-2 rounded-lg
+                  whitespace-nowrap
+                  shadow-xl shadow-black/20
+                  text-sm
+                  border border-zinc-700/50
+                  transform
+                  transition-all duration-200
+                ">
+                  {distro.name}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
       
-      <CreateContainerModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleCreateContainer} />
+      <CreateContainerModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSubmit={handleCreateContainer} 
+      />
     </div>
   );
 }
+
+LeftSidebar.propTypes = {
+  isCollapsed: PropTypes.bool.isRequired,
+  onToggle: PropTypes.func.isRequired,
+};
