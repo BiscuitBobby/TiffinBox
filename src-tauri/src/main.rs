@@ -152,6 +152,31 @@ fn start_container(container_name: &str) -> Result<(), String> {
     Err(format!("Container '{}' not found.", container_name))
 }
 
+// --- Remove Distro --- //
+#[tauri::command]
+fn remove_container(container: &str) {
+    let output = Command::new("distrobox")
+        .arg("rm")
+        .arg(container)
+        .arg("--force") 
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            println!("'{}' removed successfully.", container);
+        }
+        Ok(output) => {
+            eprintln!(
+                "Can't remove '{}': {}",
+                container,
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+        Err(e) => {
+            eprintln!("Failed to execute process: {}", e);
+        }
+    }
+}
 
 // --- Get supported images --- //
 #[tauri::command]
