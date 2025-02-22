@@ -25,11 +25,9 @@ fn find_distrobox_icons() -> HashMap<String, Option<String>> {
         .map(|line| line.split('|').nth(1).unwrap_or("").trim()) // Extract the container name
         .collect();
 
+    //todo: optimize this
     for container in &containers {
         icons.insert(container.to_string(), None);
-    }
-
-    for container in &containers {
         let desktop_dir = dirs::home_dir().unwrap().join(".local/share/applications");
 
         if let Ok(entries) = fs::read_dir(&desktop_dir) {
@@ -152,10 +150,6 @@ fn start_container(container_name: &str) -> Result<(), String> {
     Err(format!("Container '{}' not found.", container_name))
 }
 
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! This is from Rust!", name)
-}
 
 fn main() {
     tauri::Builder::default()
