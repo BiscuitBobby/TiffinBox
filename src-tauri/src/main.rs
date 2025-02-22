@@ -153,9 +153,32 @@ fn start_container(container_name: &str) -> Result<(), String> {
 }
 
 
+// --- Get supported images --- //
 #[tauri::command]
 fn distro_images() -> Value {
     toolbox::get_toolbox_json()
+}
+
+
+// --- Check if installed --- //
+#[tauri::command]
+fn check_distrobox() -> bool {
+    let paths = [
+        "/bin/distrobox",
+        "/sbin/distrobox",
+        "/usr/bin/distrobox",
+        "/usr/sbin/distrobox",
+        "/usr/local/bin/distrobox",
+        "/usr/local/sbin/distrobox",
+    ];
+
+    for path in paths.iter() {
+        if Path::new(path).exists() {
+            return true;
+        }
+    }
+    
+    false
 }
 
 
