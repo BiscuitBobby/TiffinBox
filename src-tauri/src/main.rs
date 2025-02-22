@@ -3,13 +3,15 @@
 
 use serde_json::{json, Value};
 use std::process::{Command, Stdio};
-use std::str;
 use std::io::{BufRead, BufReader};
 use std::collections::HashMap;
 use std::path::Path;
 use shellexpand;
+use std::str;
 use std::fs;
 use dirs;
+
+mod toolbox;
 
 // --- Get Icon List --- //
 fn find_distrobox_icons() -> HashMap<String, Option<String>> {
@@ -148,6 +150,12 @@ fn start_container(container_name: &str) -> Result<(), String> {
     }
 
     Err(format!("Container '{}' not found.", container_name))
+}
+
+
+#[tauri::command]
+fn distro_images() -> Value {
+    toolbox::get_toolbox_json()
 }
 
 
