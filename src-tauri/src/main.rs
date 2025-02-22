@@ -204,6 +204,35 @@ fn stop_container(container: &str) {
     }
 }
 
+// --- Create Distro --- //
+#[tauri::command]
+fn create_container(container: &str, image: &str) {
+    let output = Command::new("distrobox")
+        .arg("create")
+        .arg("--name")
+        .arg(container)
+        .arg("--image")
+        .arg(image)
+        .arg("--pull")
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            println!("Container '{}' created successfully with image '{}'.", container, image);
+        }
+        Ok(output) => {
+            eprintln!(
+                "Can't create '{}': {}",
+                container,
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+        Err(e) => {
+            eprintln!("Failed to execute process: {}", e);
+        }
+    }
+}
+
 // --- Get supported images --- //
 #[tauri::command]
 fn distro_images() -> Value {
