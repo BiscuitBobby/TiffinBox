@@ -94,9 +94,11 @@ checksum = "6b964d184e89d9b6b67dd2715bc8e74cf3107fb2b529990c90cf517326150bf4"
 name = "app"
 version = "0.1.0"
 dependencies = [
+ "dirs 5.0.1",
  "log",
  "serde",
  "serde_json",
+ "shellexpand",
  "tauri",
  "tauri-build",
  "tauri-plugin-log",
@@ -3363,6 +3365,15 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "digest",
+]
+
+[[package]]
+name = "shellexpand"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da03fa3b94cc19e3ebfc88c4229c49d8f08cdbd1228870a45f0ffdf84988e14b"
+dependencies = [
+ "dirs 5.0.1",
 ]
 
 [[package]]
