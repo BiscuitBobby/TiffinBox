@@ -178,6 +178,32 @@ fn remove_container(container: &str) {
     }
 }
 
+// --- Stop Distro --- //
+#[tauri::command]
+fn stop_container(container: &str) {
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg(format!("echo 'y' | distrobox stop {}", container))
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            println!("'{}' stopped successfully.", container);
+        }
+        Ok(output) => {
+            eprintln!(
+                "Can't stop '{}':\nSTDOUT: {}\nSTDERR: {}",
+                container,
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+        Err(e) => {
+            eprintln!("Failed to execute process: {}", e);
+        }
+    }
+}
+
 // --- Get supported images --- //
 #[tauri::command]
 fn distro_images() -> Value {
