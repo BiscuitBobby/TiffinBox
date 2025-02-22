@@ -233,6 +233,78 @@ fn create_container(container: &str, image: &str) {
     }
 }
 
+// --- Get status of a container --- //
+#[tauri::command]
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
+fn detect_container_runtime() -> Option<String> {
+    let runtimes = ["podman", "docker", "lilypod"];
+
+    for runtime in runtimes.iter() {
+        if let Ok(output) = Command::new(runtime).arg("--version").output() {
+            if output.status.success() {
+                return Some(runtime.to_string());
+            }
+        }
+    }
+    None 
+}
+
+fn run_command(cmd: &str, args: &[&str]) -> Result<String> {
+    let output = Command::new(cmd).args(args).output()?;
+
+    if output.status.success() {
+        String::from_utf8(output.stdout)
+            .map(|s| s.trim().to_string())
+            .map_err(|e| e.into())
+    } else {
+        Err(format!("Command `{}` failed", cmd).into())
+    }
+}
+
+fn list_containers() -> Result<Vec<Value>> {
+    let runtime = detect_container_runtime().ok_or("No container runtime detected")?;
+    
+    match run_command(&runtime, &["ps", "-a", "--format", "json"]) {
+        Ok(output) if output.is_empty() => Ok(vec![]),
+        Ok(output) => serde_json::from_str(&output).map_err(|e| Box::new(e) as Box<dyn Error>),
+        Err(_) => Ok(vec![]),
+    }
+}
+
+fn get_container_status(container_id: &str) -> Result<Value> {
+    let runtime = detect_container_runtime().ok_or("No container runtime detected")?;
+    let containers = list_containers()?;
+
+    let container_map: HashMap<String, Value> = containers
+        .into_iter()
+        .filter_map(|container| {
+            let id = container["Id"].as_str()?;
+            Some((id[..12].to_string(), container))
+        })
+        .collect();
+
+    if !container_map.contains_key(container_id) {
+        return Ok(json!({
+            "error": format!("Container '{}' not found.", container_id)
+        }));
+    }
+
+    match run_command(&runtime, &["stats", "--no-stream", "--format", "json", container_id]) {
+        Ok(output) => {
+            let stats: Value = serde_json::from_str(&output)?;
+            match stats {
+                Value::Array(mut arr) if !arr.is_empty() => Ok(arr.remove(0)),
+                Value::Object(_) => Ok(stats),
+                _ => Ok(json!({ "error": "Unexpected stats format" }))
+            }
+        }
+        Err(_) => Ok(json!({ "error": format!("Failed to retrieve stats for '{}'", container_id) }))
+    }
+}
+
+
+
 // --- Get supported images --- //
 #[tauri::command]
 fn distro_images() -> Value {
