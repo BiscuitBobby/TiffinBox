@@ -9,6 +9,7 @@ export function OperationButtonTray({ containerID, status }) {
     isDistroActive, 
     activeDistroId, 
     setDistroState,
+    safeExitDistro,
     toggleTerminal,
     terminalRef
   } = useTerminalStore()
@@ -30,9 +31,9 @@ export function OperationButtonTray({ containerID, status }) {
       // If switching to a different distro
       console.log('Switching from distro', activeDistroId, 'to', id)
       try {
-        // Exit current distro
-        await terminalRef?.current?.writeToPty(`exit\n`)
-        // Enter new distro
+        // Safely exit current distro !!!!THIS IS VERY IMPORTANT AS IT WILL KILL THE APP IF NOT CHECKED
+        await safeExitDistro()
+        
         await terminalRef?.current?.writeToPty(`distrobox enter ${id}\n`)
         setDistroState(true, id)
         console.log('Successfully switched distro')
@@ -53,15 +54,12 @@ export function OperationButtonTray({ containerID, status }) {
   const stopContainer = async (id) => {
     console.log('Stop button clicked for container:', id)
     try {
-      // Send exit command first
-      await terminalRef?.current?.writeToPty(`exit\n`)
+      // First safely exit if we're in the distro
+      if (activeDistroId === id) {
+        await safeExitDistro()
+      }
       // Then send the distrobox stop command
       await terminalRef?.current?.writeToPty(`distrobox stop ${id}\n`)
-      
-      if (activeDistroId === id) {
-        setDistroState(false, null)
-        console.log('Stopped active distro, state reset')
-      }
       console.log('Stop commands sent successfully')
     } catch (error) {
       console.error('Error stopping container:', error)
@@ -80,7 +78,6 @@ export function OperationButtonTray({ containerID, status }) {
 
       <button
         className="bg-transparent border border-white rounded-lg p-3 disabled:opacity-50 disabled:cursor-not-allowed"
-        // disabled={status !== "running"}
         onClick={() => stopContainer(containerID)}
       >
         <Square className="h-4 w-4" />
