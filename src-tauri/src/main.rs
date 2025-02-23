@@ -430,7 +430,7 @@ fn main() {
             stop_container,
             remove_container,
             create_container,
-            get_container_status
+            get_container_status,
             get_all_containers_status,
             distro_images
         ])
