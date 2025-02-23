@@ -95,6 +95,7 @@ name = "app"
 version = "0.1.0"
 dependencies = [
  "dirs 5.0.1",
+ "lazy_static",
  "log",
  "serde",
  "serde_json",
