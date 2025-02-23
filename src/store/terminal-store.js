@@ -13,6 +13,14 @@ const useTerminalStore = create((set, get) => ({
     isDistroActive: isActive, 
     activeDistroId: distroId 
   }),
+  // Add helper method to safely exit distro
+  safeExitDistro: async () => {
+    const state = get()
+    if (state.isDistroActive && state.terminalRef?.current) {
+      await state.terminalRef.current.writeToPty('exit\n')
+      set({ isDistroActive: false, activeDistroId: null })
+    }
+  }
 }))
 
 export default useTerminalStore 
