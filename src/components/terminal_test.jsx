@@ -9,9 +9,10 @@ const TerminalComponent = () => {
   const fitAddonRef = useRef(new FitAddon());
   const termRef = useRef(
     new Terminal({
-      fontFamily: "JetBrains Mono",
+      fontFamily: "Monaco",
+      fontSize: 12,
       theme: {
-        background: "rgb(47, 47, 47)",
+        background: "rgb(29,41,61)",
       },
     })
   );
