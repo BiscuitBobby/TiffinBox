@@ -12,6 +12,9 @@ export default function LeftSidebar({ isCollapsed, onToggle }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [distros, setDistros] = useState([])
   const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredDistros, setFilteredDistros] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   const handleCreateContainer = (containerData) => {
     console.log("Creating container with data:", containerData);
@@ -36,6 +39,30 @@ export default function LeftSidebar({ isCollapsed, onToggle }) {
       console.log('Selected container:',distro);
       navigate('/container',{state:distro});
     }
+  }
+
+  const handleSearch = (e) => {
+    const term = e.target.value;
+    setSearchTerm(term);
+    setShowDropdown(true);
+
+    if (term.trim() === '') {
+      setFilteredDistros([]);
+      setShowDropdown(false);
+      return;
+    }
+
+    const filtered = distros.filter(distro =>
+      distro.NAME?.toLowerCase().includes(term.toLowerCase()) ||
+      distro.STATUS?.toLowerCase().includes(term.toLowerCase())
+    );
+    setFilteredDistros(filtered);
+  }
+
+  const handleDistroSelect = (distro) => {
+    setSearchTerm(distro.NAME);
+    setShowDropdown(false);
+    navigate('/container', { state: distro });
   }
 
   useEffect(() => {
@@ -89,23 +116,43 @@ export default function LeftSidebar({ isCollapsed, onToggle }) {
         </div>
         
         <div className="flex items-center gap-2">
-          <button 
+          <button
             className="p-2 text-zinc-400 hover:text-orange-400 hover:bg-zinc-700/50
-              rounded-lg transition-all duration-200 flex items-center justify-center "
+              rounded-lg transition-all duration-200 flex items-center justify-center"
             onClick={handleSearchButton}
           >
             <Search className="h-6 w-5" />
-            
           </button>
           {!isCollapsed && (
-            <input
-              type="text"
-              placeholder="Search containers..."
-              className="w-full bg-zinc-800/50 text-zinc-100 rounded-xl px-4 py-2
-                focus:outline-none focus:ring-2 focus:ring-orange-500/50
-                border border-zinc-700/50
-                placeholder-zinc-500"
-            />
+            <div className="w-full relative">
+              <input
+                type="text"
+                value={searchTerm}
+                placeholder="Search containers..."
+                className="w-full bg-zinc-800/50 text-zinc-100 rounded-xl px-4 py-2
+                  focus:outline-none focus:ring-2 focus:ring-orange-500/50
+                  border border-zinc-700/50
+                  placeholder-zinc-500"
+                onChange={handleSearch}
+              />
+              {showDropdown && filteredDistros.length > 0 && (
+                <div className="absolute w-full mt-1 bg-zinc-800 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto">
+                  {filteredDistros.map((distro) => (
+                    <div
+                      key={distro.ID}
+                      className="px-4 py-2 hover:bg-zinc-700 cursor-pointer text-zinc-100 flex items-center gap-2"
+                      onClick={() => handleDistroSelect(distro)}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center">
+                        {distro.NAME?.[0]}
+                      </div>
+                      <span>{distro.NAME}</span>
+                      <span className="text-sm text-zinc-400">({distro.STATUS})</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
