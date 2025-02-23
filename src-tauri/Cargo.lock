@@ -101,7 +101,6 @@ dependencies = [
  "serde",
  "serde_json",
  "shellexpand",
- "shellexpand",
  "tauri",
  "tauri-build",
  "tauri-plugin-log",

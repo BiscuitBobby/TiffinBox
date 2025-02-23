@@ -4,15 +4,18 @@ import  LeftSidebar  from "./leftsidebar";
 import { StatusBar } from "./status-bar";
 import { TerminalPanel } from "./terminal-panel";
 import { CommandPalette } from "./command-palette";
-import { RightSidebar } from "./rightsidebar";
 import { TerminalProvider } from "@/hooks/modal-context";
+import { RightSidebar } from "./rightsidebar";
+import { RightSidebarProvider } from "@/hooks/right-sidebar";
 
 export function Layout({ children }) {
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(true);
-  const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(true);
+
+
 
   return (
     <TerminalProvider>
+      <RightSidebarProvider>
     <div className="flex h-screen bg-background space-background text-foreground">
       <LeftSidebar
         isCollapsed={isLeftSidebarCollapsed}
@@ -23,12 +26,10 @@ export function Layout({ children }) {
         <TerminalPanel distroName="debian" />
         <StatusBar />
       </div>
-      <RightSidebar
-        isCollapsed={isRightSidebarCollapsed}
-        onToggle={() => setIsRightSidebarCollapsed(!isRightSidebarCollapsed)}
-      />
+      <RightSidebar  />
       <CommandPalette />
     </div>
+    </RightSidebarProvider>
     </TerminalProvider>
   );
 }
