@@ -8,7 +8,7 @@ export default function ContainerCard() {
   const distro = location.state
 
   return (
-    <div className="w-full min-h-[35vh] rounded-xl border border-neutral-700 bg-gradient-to-br from-neutral-800 to-neutral-900 text-white shadow-lg transition-all duration-300 hover:shadow-xl">
+    <div className="w-full min-h-[20vh] rounded-xl border border-white bg-gradient-to-br from-neutral-800 to-neutral-900 text-white shadow-lg transition-all duration-300 hover:shadow-xl">
       <div className="p-8">
        
         <div className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-8">
@@ -16,7 +16,7 @@ export default function ContainerCard() {
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
             <img 
-              src={distro.ICON} 
+              src="/src/assets/icons/arch.svg"
               alt={distro.NAME} 
               className="relative w-[100px] h-[100px] md:w-[125px] md:h-[125px] lg:w-[150px] lg:h-[150px] rounded-full object-cover shadow-xl transition-transform duration-300"
             />
@@ -33,10 +33,10 @@ export default function ContainerCard() {
           </div>
         </div>
 
-       
+        {/* Environment Tray */}
         <div className="pt-6 border-t border-neutral-700">
           <div className="flex flex-col sm:flex-row gap-4 justify-start w-full sm:w-auto">
-          
+          {/* Overview Button  */}
             <button 
               id="overview" 
               className="flex items-center justify-center gap-3 px-6 py-3 bg-neutral-900 hover:bg-neutral-800 rounded-lg transition-all duration-200 hover:shadow-lg group"
@@ -45,7 +45,7 @@ export default function ContainerCard() {
               <span className="font-medium">Overview</span>
             </button>
 
-           
+           {/* Keys Button */}
             <button 
               id="keys" 
               className="flex items-center justify-center gap-3 px-6 py-3 bg-neutral-900 hover:bg-neutral-800 rounded-lg transition-all duration-200 hover:shadow-lg group"

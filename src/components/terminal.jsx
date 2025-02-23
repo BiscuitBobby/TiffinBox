@@ -14,12 +14,22 @@ const TerminalComponent = forwardRef((props, ref) => {
 
   useImperativeHandle(ref, () => ({
     fitTerminal: () => {
+      console.log('Fitting terminal to container')
       if (fitAddonRef.current && termRef.current) {
         fitAddonRef.current.fit();
         invoke("async_resize_pty", {
           rows: termRef.current.rows,
           cols: termRef.current.cols,
-        }).catch(console.error);
+        }).catch(error => console.error('Error resizing PTY:', error));
+      }
+    },
+    writeToPty: async (data) => {
+      console.log('Writing to PTY:', data)
+      try {
+        await invoke("async_write_to_pty", { data });
+        console.log('Successfully wrote to PTY')
+      } catch (error) {
+        console.error("Write error:", error);
       }
     }
   }));
