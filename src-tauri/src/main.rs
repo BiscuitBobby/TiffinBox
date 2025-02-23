@@ -16,6 +16,21 @@ use std::time::{Duration, Instant};
 
 mod toolbox;
 
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
+/// Runs a command and returns its output as a String
+fn run_command(cmd: &str, args: &[&str]) -> Result<String> {
+    let output = Command::new(cmd).args(args).output()?;
+
+    if output.status.success() {
+        String::from_utf8(output.stdout)
+            .map(|s| s.trim().to_string())
+            .map_err(|e| e.into())
+    } else {
+        Err(format!("Command `{}` failed", cmd).into())
+    }
+}
+
 // --- Get Icon List --- //
 lazy_static! {
     static ref ICON_CACHE: Mutex<(HashMap<String, Option<String>>, Instant)> =
@@ -279,6 +294,101 @@ fn create_container(container: &str, image: &str) {
     }
 }
 
+// --- Get status of a container --- //
+fn detect_container_runtime() -> Option<String> {
+    let runtimes = ["podman", "docker", "lilypod"];
+
+    for runtime in runtimes.iter() {
+        if let Ok(output) = Command::new(runtime).arg("--version").output() {
+            if output.status.success() {
+                return Some(runtime.to_string());
+            }
+        }
+    }
+
+    None // No container runtime found
+}
+
+
+/// Lists containers using the detected runtime
+fn list_all_containers() -> Result<Vec<Value>> {
+    let runtime = detect_container_runtime().ok_or("No container runtime detected")?;
+    
+    match run_command(&runtime, &["ps", "-a", "--format", "json"]) {
+        Ok(output) if output.is_empty() => Ok(vec![]),
+        Ok(output) => serde_json::from_str(&output).map_err(|e| Box::new(e) as Box<dyn Error>),
+        Err(_) => Ok(vec![]),
+    }
+}
+
+/// Gets container status based on runtime
+#[tauri::command]
+fn get_container_status(container_id: &str) -> Result<Value> {
+    let runtime = detect_container_runtime().ok_or("No container runtime detected")?;
+    let containers = list_all_containers()?;
+
+    // Map container IDs to their JSON info
+    let container_map: HashMap<String, Value> = containers
+        .into_iter()
+        .filter_map(|container| {
+            let id = container["Id"].as_str()?;
+            Some((id[..12].to_string(), container))
+        })
+        .collect();
+
+    if !container_map.contains_key(container_id) {
+        return Ok(json!({
+            "error": format!("Container '{}' not found.", container_id)
+        }));
+    }
+
+    match run_command(&runtime, &["stats", "--no-stream", "--format", "json", container_id]) {
+        Ok(output) => {
+            let stats: Value = serde_json::from_str(&output)?;
+            match stats {
+                Value::Array(mut arr) if !arr.is_empty() => Ok(arr.remove(0)),
+                Value::Object(_) => Ok(stats),
+                _ => Ok(json!({ "error": "Unexpected stats format" }))
+            }
+        }
+        Err(_) => Ok(json!({ "error": format!("Failed to retrieve stats for '{}'", container_id) }))
+    }
+}
+
+// --- Get status of all containers --- //
+#[tauri::command]
+fn get_all_containers_status() -> Result<Vec<Value>> {
+    let distrobox_ids = list_distrobox_containers()?;
+    let containers = list_all_containers()?;
+    
+    let container_dict: HashMap<String, Value> = containers
+        .into_iter()
+        .filter_map(|container| {
+            let id = container["Id"].as_str()?;
+            Some((id[..12].to_string(), container))
+        })
+        .collect();
+
+    let matching_ids: HashSet<_> = distrobox_ids
+        .into_iter()
+        .filter(|id| container_dict.contains_key(id))
+        .collect();
+
+    if matching_ids.is_empty() {
+        return Ok(vec![json!({"error": "No matching containers found."})]);
+    }
+
+    let mut container_statuses = Vec::new();
+    
+    for container_id in matching_ids {
+        match get_container_status(&container_id) {
+            Ok(status) => container_statuses.push(json!({ "id": container_id, "status": status })),
+            Err(_) => container_statuses.push(json!({ "id": container_id, "error": "Failed to retrieve status" })),
+        }
+    }
+    Ok(container_statuses)
+}
+
 // --- Get supported images --- //
 #[tauri::command]
 fn distro_images() -> Value {
@@ -305,7 +415,6 @@ fn check_distrobox() -> bool {
     false
 }
 
-
 fn main() {
     {
         // init cached icons
@@ -321,6 +430,8 @@ fn main() {
             stop_container,
             remove_container,
             create_container,
+            get_container_status
+            get_all_containers_status,
             distro_images
         ])
         .run(tauri::generate_context!())
