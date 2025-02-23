@@ -1,6 +1,9 @@
 /* eslint-disable react/prop-types */
 
-import { Activity, Box, Settings } from 'lucide-react';
+import { Activity, Box } from 'lucide-react';
+import { enrichContainerData } from '../utils/container-utils';
+import { DISTRO_ICONS } from '../utils/container-icons';
+import { extractDistroName } from '../utils/container-utils';
 
 
 function CircularProgress({ value, label, color }) {
@@ -41,7 +44,10 @@ function CircularProgress({ value, label, color }) {
   );
 }
 
-function ContainerCard({ container, onManage }) {
+function ContainerCard({ container }) {
+  const distroName = extractDistroName(container.IMAGE);
+  const distroIcon = DISTRO_ICONS[distroName];
+
   return (
     <div className="group relative bg-gradient-to-br from-neutral-900 via-neutral-900 to-neutral-800 rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-500/10">
       {/* Gradient Border Effect */}
@@ -53,7 +59,7 @@ function ContainerCard({ container, onManage }) {
           <div className="relative">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full opacity-50 blur group-hover:opacity-75 transition-opacity duration-300" />
             <div className="relative w-12 h-12 bg-neutral-800 rounded-full flex items-center justify-center">
-              <Box className="w-6 h-6 text-blue-400" />
+              <img src="src/assets/icons/ubuntu.png" alt="distro icon" className="w-6 h-6" />
             </div>
           </div>
           <div>
@@ -63,11 +69,16 @@ function ContainerCard({ container, onManage }) {
             <p className="text-xs font-mono text-neutral-500 mt-1">{container.ID}</p>
           </div>
         </div>
-        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-          container.STATUS === 'running' 
-            ? 'bg-emerald-500/20 text-emerald-400'
-            : 'bg-red-500/20 text-red-400'
-        }`}>
+        <div className={`px-3 py-1 rounded-full text-xs font-medium ${(() => {
+          const status = container.STATUS.toLowerCase();
+          console.log('Status:', status);
+          switch (true) {
+            case status.startsWith('up'):
+              return 'bg-emerald-500/20 text-emerald-400';
+            default:
+              return 'bg-red-500/20 text-red-400';
+          }
+        })()}`}>
           {container.STATUS}
         </div>
       </div>
@@ -93,27 +104,20 @@ function ContainerCard({ container, onManage }) {
           <span className="text-sm font-mono text-neutral-400">{container.IMAGE}</span>
         </div>
       </div>
-
-      {/* Action Button */}
-      <button
-        onClick={onManage}
-        className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-2.5 px-4 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
-      >
-        <Settings className="w-4 h-4" />
-        <span className="font-medium">Manage</span>
-      </button>
     </div>
   );
 }
 
-export function ContainerCardGrid({ containers, onManageContainer }) {
+export function ContainerCardGrid({ containers }) {
+  // Enrich container data with icons
+  const enrichedContainers = containers.map(enrichContainerData);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-      {containers.map((container) => (
+      {enrichedContainers.map((container) => (
         <ContainerCard
           key={container.ID}
           container={container}
-          onManage={() => onManageContainer(container.ID)}
         />
       ))}
     </div>

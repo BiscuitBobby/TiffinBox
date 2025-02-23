@@ -4,6 +4,8 @@ import { Search,  ArrowLeftToLine } from "lucide-react";
 import { CreateContainerModal } from "./create-container-modal";
 import { invoke } from "@tauri-apps/api/core";
 import { useNavigate } from "react-router-dom";
+import { DISTRO_ICONS } from '../utils/container-icons';
+import { extractDistroName } from '../utils/container-utils';
 
 export default function LeftSidebar({ isCollapsed, onToggle }) {
   const [isSearchActive, setIsSearchActive] = useState(false);
@@ -123,41 +125,42 @@ export default function LeftSidebar({ isCollapsed, onToggle }) {
           px-2 py-4
         ">
           <div className="flex flex-col items-center space-y-4">
-            {distros.map((distro) => (
-              <div
-                key={distro.ID}
-                className="group relative w-full flex justify-center"
-              >
-                <div className={`
-                  w-12 h-12
-                  
-                  bg-opacity-85
-                  rounded-xl
-                  flex items-center justify-center
-                  text-white font-medium text-lg
-                  shadow-lg shadow-black/10
-                  hover:scale-105
-                  hover:shadow-xl
-                  hover:shadow-black/20
-                  transition-all duration-200
-                  cursor-pointer
-                  ring-1 ring-white/10
-                  hover:ring-white/20
-                `}>
-                 <button className="pointer" onClick={handleContainerCard(distro)}>
-                  <img 
-                    src={`/assets/${distro.IMAGE}.png`} 
-                    alt="RANDOM" 
-                    className="w-10 h-10 rounded-full shadow-md transition-transform duration-300 ease-in-out transform hover:scale-110"
-                  />
-                  </button>
-
+            {distros.map((distro) => {
+              const distroName = extractDistroName(distro.IMAGE);
+              const distroIcon = DISTRO_ICONS[distroName];
+              console.log('Distro icon for', distroName, ':', distroIcon);
+              
+              return (
+                <div
+                  key={distro.ID}
+                  className="group relative w-full flex justify-center"
+                >
+                  <div className={`
+                    w-12 h-12
+                    bg-opacity-85
+                    rounded-xl
+                    flex items-center justify-center
+                    text-white font-medium text-lg
+                    shadow-lg shadow-black/10
+                    hover:scale-105
+                    hover:shadow-xl
+                    hover:shadow-black/20
+                    transition-all duration-200
+                    cursor-pointer
+                    ring-1 ring-white/10
+                    hover:ring-white/20
+                  `}>
+                    <button className="pointer" onClick={handleContainerCard(distro)}>
+                      <img 
+                        src='src/assets/icons/ubuntu.png'
+                        alt={distroName} 
+                        className="w-10 h-10 rounded-full shadow-md transition-transform duration-300 ease-in-out transform hover:scale-110"
+                      />
+                    </button>
+                  </div>
                 </div>
-               
-
-               
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
