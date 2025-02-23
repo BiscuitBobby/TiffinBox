@@ -1,49 +1,77 @@
 // // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 // #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use serde_json::{json, Value};
-use std::process::{Command, Stdio};
-use std::io::{BufRead, BufReader};
-use std::collections::HashMap;
-use std::path::Path;
-use shellexpand;
-use std::str;
-use std::fs;
 use dirs;
+use lazy_static::lazy_static;
+use serde_json::{json, Value};
+use shellexpand;
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::path::Path;
+use std::process::{Command, Stdio};
+use std::str;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 mod toolbox;
 
 // --- Get Icon List --- //
-fn find_distrobox_icons() -> HashMap<String, Option<String>> {
-    let mut icons: HashMap<String, Option<String>> = HashMap::new();
+lazy_static! {
+    static ref ICON_CACHE: Mutex<(HashMap<String, Option<String>>, Instant)> =
+        Mutex::new((HashMap::new(), Instant::now()));
+}
 
-    let output = Command::new("distrobox-list")
-        .arg("--no-color")
-        .output()
-        .expect("Failed to execute distrobox-list");
+fn find_distrobox_icons() -> Result<HashMap<String, Option<String>>, String> {
+    let mut icons = HashMap::new();
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let containers: Vec<&str> = stdout.lines().skip(1) // Skip the header
-        .map(|line| line.split('|').nth(1).unwrap_or("").trim()) // Extract the container name
-        .collect();
+    let desktop_dir = dirs::home_dir()
+        .ok_or("Could not find home directory")?
+        .join(".local/share/applications");
 
-    //todo: optimize this
-    for container in &containers {
-        icons.insert(container.to_string(), None);
-        let desktop_dir = dirs::home_dir().unwrap().join(".local/share/applications");
+    // Read directory entries once
+    if let Ok(entries) = std::fs::read_dir(&desktop_dir) {
+        let desktop_files: Vec<_> = entries
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .map_or(false, |ext| ext == "desktop")
+            })
+            .collect();
 
-        if let Ok(entries) = fs::read_dir(&desktop_dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.extension().and_then(|ext| ext.to_str()) == Some("desktop") {
-                    if let Ok(content) = fs::read_to_string(&path) {
-                        for line in content.lines() {
+        // Get container list first
+        let output = Command::new("distrobox-list")
+            .arg("--no-color")
+            .output()
+            .map_err(|e| e.to_string())?;
+
+        let stdout = String::from_utf8(output.stdout).map_err(|e| e.to_string())?;
+
+        // Process each container
+        for line in stdout.lines().skip(1) {
+            if let Some(container) = line
+                .split('|')
+                .nth(1)
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+            {
+                icons.insert(container.to_string(), None);
+
+                // Check each desktop file
+                for entry in &desktop_files {
+                    if let Ok(file) = File::open(entry.path()) {
+                        let reader = BufReader::new(file);
+
+                        for line in reader.lines().flatten() {
                             if line.starts_with("Icon=") {
                                 let icon_path = line.trim_start_matches("Icon=");
                                 let icon_path_resolved = shellexpand::tilde(icon_path).to_string();
 
                                 if Path::new(&icon_path_resolved).exists() {
-                                    icons.insert(container.to_string(), Some(icon_path_resolved.clone()));
+                                    icons.insert(container.to_string(), Some(icon_path_resolved));
                                     break;
                                 }
                             }
@@ -54,67 +82,82 @@ fn find_distrobox_icons() -> HashMap<String, Option<String>> {
         }
     }
 
-    icons
+    Ok(icons)
 }
 
+fn get_cached_icons() -> Result<HashMap<String, Option<String>>, String> {
+    let mut cache = ICON_CACHE.lock().map_err(|e| e.to_string())?;
+    let now = Instant::now();
+
+    // Refresh cache if older than 5 minutes
+    if now.duration_since(cache.1) > Duration::from_secs(300) {
+        *cache = (find_distrobox_icons()?, now);
+    }
+
+    Ok(cache.0.clone())
+}
+
+// fn get_cached_icons() -> Result<HashMap<String, Option<String>>, String> {
+//     let mut cache = ICON_CACHE.lock().map_err(|e| e.to_string())?;
+//     let now = Instant::now();
+
+//     // Refresh cache if older than 5 minutes
+//     if now.duration_since(cache.1) > Duration::from_secs(300) {
+//         *cache = (find_distrobox_icons()?, now);
+//     }
+
+//     Ok(cache.0.clone())
+// }
 
 // --- Get Distrobox List --- //
 #[tauri::command]
 fn list_containers() -> Result<Value, String> {
+    // Get icons first to avoid multiple command executions
+    let icons = get_cached_icons()?;
+
     let output = Command::new("distrobox")
         .arg("list")
         .output()
         .map_err(|e| format!("Failed to execute command: {}", e))?;
 
     if !output.status.success() {
-        return Err(format!(
-            "Command failed with status: {}",
-            output.status
-        ));
+        return Err(format!("Command failed with status: {}", output.status));
     }
 
-    let stdout = str::from_utf8(&output.stdout)
-        .map_err(|e| format!("Failed to read output: {}", e))?;
-
-    let lines: Vec<&str> = stdout.lines().collect();
-
-    if lines.len() < 2 {
-        return Err("No valid containers found".to_string());
-    }
+    let stdout =
+        String::from_utf8(output.stdout).map_err(|e| format!("Failed to read output: {}", e))?;
 
     let mut containers = Vec::new();
-    let icons = find_distrobox_icons();
 
-    for line in lines.iter().skip(1) {
-        let parts: Vec<&str> = line.split('|').map(|s| s.trim()).collect();
+    // Process lines directly without collecting
+    for line in stdout.lines().skip(1) {
+        let parts: Vec<&str> = line.split('|').map(str::trim).collect();
         if parts.len() == 4 {
             let container_name = parts[1].to_string();
             let icon = icons.get(&container_name).cloned().unwrap_or(None);
 
-            let container = json!({
+            containers.push(json!({
                 "ID": parts[0],
                 "NAME": container_name,
                 "STATUS": parts[2],
                 "IMAGE": parts[3],
                 "ICON": icon
-            });
-
-            containers.push(container);
+            }));
         }
     }
 
     Ok(json!(containers))
 }
 
-
 // --- Start Distro --- //
 #[tauri::command]
 fn start_container(container_name: &str) -> Result<(), String> {
     let containers = list_containers()?;
 
-    if let Some(container) = containers.as_array().and_then(|arr| {
-        arr.iter().find(|c| c["NAME"] == container_name)
-    }) {
+    if let Some(container) = containers
+        .as_array()
+        .and_then(|arr| arr.iter().find(|c| c["NAME"] == container_name))
+    {
         let status = container["STATUS"].as_str().unwrap_or("");
 
         if status.contains("Exited") {
@@ -128,21 +171,21 @@ fn start_container(container_name: &str) -> Result<(), String> {
                 .stderr(Stdio::piped())
                 .spawn()
                 .map_err(|e| format!("Failed to execute command: {}", e))?;
-    
+
             let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
             let stderr_reader = BufReader::new(stderr);
-    
+
             for line in stderr_reader.lines() {
                 let line = line.map_err(|e| format!("Error reading stderr: {}", e))?;
                 eprintln!("[stderr] {}", line);
-    
+
                 if line.contains("Container Setup Complete!") {
                     println!("Started container");
                     return Ok(());
                 }
             }
-    
-            return Err("Container setup message not found.".to_string())
+
+            return Err("Container setup message not found.".to_string());
         } else {
             println!("Container '{}' is already running.", container_name);
             return Ok(());
@@ -158,7 +201,7 @@ fn remove_container(container: &str) {
     let output = Command::new("distrobox")
         .arg("rm")
         .arg(container)
-        .arg("--force") 
+        .arg("--force")
         .output();
 
     match output {
@@ -218,7 +261,10 @@ fn create_container(container: &str, image: &str) {
 
     match output {
         Ok(output) if output.status.success() => {
-            println!("Container '{}' created successfully with image '{}'.", container, image);
+            println!(
+                "Container '{}' created successfully with image '{}'.",
+                container, image
+            );
         }
         Ok(output) => {
             eprintln!(
@@ -239,7 +285,6 @@ fn distro_images() -> Value {
     toolbox::get_toolbox_json()
 }
 
-
 // --- Check if installed --- //
 #[tauri::command]
 fn check_distrobox() -> bool {
@@ -257,12 +302,17 @@ fn check_distrobox() -> bool {
             return true;
         }
     }
-    
     false
 }
 
 
 fn main() {
+    {
+        // init cached icons
+        let mut cache = ICON_CACHE.lock().map_err(|e| e.to_string()).unwrap();
+        let now = Instant::now();
+        *cache = (find_distrobox_icons().unwrap(), now);
+    }
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             check_distrobox,
@@ -271,7 +321,7 @@ fn main() {
             stop_container,
             remove_container,
             create_container,
-            distro_images,
+            distro_images
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
