@@ -96,11 +96,9 @@ version = "0.1.0"
 dependencies = [
  "dirs 5.0.1",
  "lazy_static",
- "dirs 5.0.1",
  "log",
  "serde",
  "serde_json",
- "shellexpand",
  "shellexpand",
  "tauri",
  "tauri-build",
@@ -3368,15 +3366,6 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "digest",
-]
-
-[[package]]
-name = "shellexpand"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da03fa3b94cc19e3ebfc88c4229c49d8f08cdbd1228870a45f0ffdf84988e14b"
-dependencies = [
- "dirs 5.0.1",
 ]
 
 [[package]]
