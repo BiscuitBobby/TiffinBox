@@ -1,35 +1,22 @@
 // // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 // #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
-use dirs;
-use lazy_static::lazy_static;
-use serde_json::{json, Value};
-use shellexpand;
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::path::Path;
+use std::collections::{HashMap, HashSet};
 use std::process::{Command, Stdio};
-use std::str;
-use std::sync::Mutex;
 use std::time::{Duration, Instant};
+use std::io::{BufRead, BufReader};
+use serde_json::{json, Value};
+use lazy_static::lazy_static;
+use std::error::Error;
+use std::sync::Mutex;
+use std::path::Path;
+use std::fs::File;
+use shellexpand;
+use std::str;
+use dirs;
+
 
 mod toolbox;
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
-
-/// Runs a command and returns its output as a String
-fn run_command(cmd: &str, args: &[&str]) -> Result<String> {
-    let output = Command::new(cmd).args(args).output()?;
-
-    if output.status.success() {
-        String::from_utf8(output.stdout)
-            .map(|s| s.trim().to_string())
-            .map_err(|e| e.into())
-    } else {
-        Err(format!("Command `{}` failed", cmd).into())
-    }
-}
 
 // --- Get Icon List --- //
 lazy_static! {
@@ -127,7 +114,6 @@ fn get_cached_icons() -> Result<HashMap<String, Option<String>>, String> {
 // --- Get Distrobox List --- //
 #[tauri::command]
 fn list_containers() -> Result<Value, String> {
-    // Get icons first to avoid multiple command executions
     let icons = get_cached_icons()?;
 
     let output = Command::new("distrobox")
@@ -144,7 +130,6 @@ fn list_containers() -> Result<Value, String> {
 
     let mut containers = Vec::new();
 
-    // Process lines directly without collecting
     for line in stdout.lines().skip(1) {
         let parts: Vec<&str> = line.split('|').map(str::trim).collect();
         if parts.len() == 4 {
@@ -294,7 +279,6 @@ fn create_container(container: &str, image: &str) {
     }
 }
 
-// --- Get status of a container --- //
 fn detect_container_runtime() -> Option<String> {
     let runtimes = ["podman", "docker", "lilypod"];
 
@@ -311,21 +295,29 @@ fn detect_container_runtime() -> Option<String> {
 
 
 /// Lists containers using the detected runtime
-fn list_all_containers() -> Result<Vec<Value>> {
+fn list_all_containers() -> Result<Vec<Value>, Box<dyn Error>> {
     let runtime = detect_container_runtime().ok_or("No container runtime detected")?;
     
-    match run_command(&runtime, &["ps", "-a", "--format", "json"]) {
-        Ok(output) if output.is_empty() => Ok(vec![]),
-        Ok(output) => serde_json::from_str(&output).map_err(|e| Box::new(e) as Box<dyn Error>),
-        Err(_) => Ok(vec![]),
+    let output = Command::new(runtime)
+        .args(&["ps", "-a", "--format", "json"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+
+    if stdout.is_empty() {
+        Ok(vec![])
+    } else {
+        serde_json::from_str(&stdout).map_err(|e| Box::new(e) as Box<dyn Error>)
     }
 }
 
-/// Gets container status based on runtime
+// --- Get status of a container --- //
 #[tauri::command]
-fn get_container_status(container_id: &str) -> Result<Value> {
-    let runtime = detect_container_runtime().ok_or("No container runtime detected")?;
-    let containers = list_all_containers()?;
+fn get_container_status(container_id: &str) -> Result<Value, String> {
+    let runtime = detect_container_runtime().ok_or("No container runtime detected".to_string())?;
+    let containers = list_all_containers().map_err(|e| e.to_string())?;
 
     // Map container IDs to their JSON info
     let container_map: HashMap<String, Value> = containers
@@ -342,25 +334,43 @@ fn get_container_status(container_id: &str) -> Result<Value> {
         }));
     }
 
-    match run_command(&runtime, &["stats", "--no-stream", "--format", "json", container_id]) {
-        Ok(output) => {
-            let stats: Value = serde_json::from_str(&output)?;
-            match stats {
-                Value::Array(mut arr) if !arr.is_empty() => Ok(arr.remove(0)),
-                Value::Object(_) => Ok(stats),
-                _ => Ok(json!({ "error": "Unexpected stats format" }))
-            }
+    let output = Command::new(&runtime)
+        .args(&["stats", "--no-stream", "--format", "json", container_id])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stats: Value = serde_json::from_str(&stdout).map_err(|e| e.to_string())?;
+        match stats {
+            Value::Array(mut arr) if !arr.is_empty() => Ok(arr.remove(0)),
+            Value::Object(_) => Ok(stats),
+            _ => Ok(json!({ "error": "Unexpected stats format" })),
         }
-        Err(_) => Ok(json!({ "error": format!("Failed to retrieve stats for '{}'", container_id) }))
+    } else {
+        Err(format!(
+            "Failed to retrieve stats for '{}': {}",
+            container_id,
+            String::from_utf8_lossy(&output.stderr)
+        ))
     }
 }
 
 // --- Get status of all containers --- //
 #[tauri::command]
-fn get_all_containers_status() -> Result<Vec<Value>> {
-    let distrobox_ids = list_distrobox_containers()?;
-    let containers = list_all_containers()?;
-    
+fn get_all_containers_status() -> Result<Vec<Value>, String> {
+    let distrobox_ids = list_containers().map_err(|e| e.to_string())?;
+    let containers = list_all_containers().map_err(|e| e.to_string())?;
+
+    let distrobox_ids: HashSet<String> = match distrobox_ids.as_array() {
+        Some(array) => array.iter()
+            .filter_map(|id| id.as_str().map(String::from)) // Convert JSON strings to Rust strings
+            .collect(),
+        None => return Err("Invalid format for distrobox container IDs".to_string()),
+    };
+
     let container_dict: HashMap<String, Value> = containers
         .into_iter()
         .filter_map(|container| {
@@ -379,13 +389,14 @@ fn get_all_containers_status() -> Result<Vec<Value>> {
     }
 
     let mut container_statuses = Vec::new();
-    
+
     for container_id in matching_ids {
         match get_container_status(&container_id) {
             Ok(status) => container_statuses.push(json!({ "id": container_id, "status": status })),
             Err(_) => container_statuses.push(json!({ "id": container_id, "error": "Failed to retrieve status" })),
         }
     }
+
     Ok(container_statuses)
 }
 
@@ -412,7 +423,6 @@ fn check_distrobox() -> bool {
             return true;
         }
     }
-
     false
 }
 
@@ -431,7 +441,7 @@ fn main() {
             stop_container,
             remove_container,
             create_container,
-            get_container_status
+            get_container_status,
             get_all_containers_status,
             distro_images
         ])
