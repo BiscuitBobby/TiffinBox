@@ -16,7 +16,7 @@ export default function ContainerCard() {
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
             <img 
-              src={distro.ICON} 
+              src={`/assets/${distro.IMAGE}.png`} 
               alt={distro.NAME} 
               className="relative w-[100px] h-[100px] md:w-[125px] md:h-[125px] lg:w-[150px] lg:h-[150px] rounded-full object-cover shadow-xl transition-transform duration-300 group-hover:scale-105"
             />

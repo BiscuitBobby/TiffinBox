@@ -144,11 +144,16 @@ export default function LeftSidebar({ isCollapsed, onToggle }) {
                   ring-1 ring-white/10
                   hover:ring-white/20
                 `}>
-                  <button className="pointer" onClick={handleContainerCard(distro)}>
-                  {distro.NAME[0]}
+                 <button className="pointer" onClick={handleContainerCard(distro)}>
+                  <img 
+                    src={`/assets/${distro.IMAGE}.png`} 
+                    alt="RANDOM" 
+                    className="w-10 h-10 rounded-full shadow-md transition-transform duration-300 ease-in-out transform hover:scale-110"
+                  />
                   </button>
+
                 </div>
-                <img src={`${distro.ICON}`} alt="RANDOM" />
+               
 
                
               </div>

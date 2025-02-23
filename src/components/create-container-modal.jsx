@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { X, Check, Box, Terminal, ChevronDown } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
 
 export function CreateContainerModal({ isOpen, onClose, onSubmit }) {
   const [containerData, setContainerData] = useState({
@@ -20,23 +21,40 @@ export function CreateContainerModal({ isOpen, onClose, onSubmit }) {
   const [isCustomImageDropdownOpen, setIsCustomImageDropdownOpen] = useState(false);
   const imageDropdownRef = useRef(null);
   const customImageDropdownRef = useRef(null);
+  const [predefinedImages, setPredefinedImages] = useState([]);
 
-  const predefinedImages = [
-    { value: 'ubuntu', label: 'Ubuntu', description: 'Latest Ubuntu LTS' },
-    { value: 'nginx', label: 'Nginx', description: 'Web server' },
-    { value: 'postgres', label: 'PostgreSQL', description: 'Database' },
-    { value: 'mongodb', label: 'MongoDB', description: 'NoSQL Database' },
-    { value: 'redis', label: 'Redis', description: 'In-memory cache' },
-    { value: 'custom', label: 'Custom Image', description: 'Use a custom image' }
-  ];
 
-  const customImages = [
-    { value: 'ubuntu:22.04', label: 'Ubuntu 22.04' },
-    { value: 'ubuntu:20.04', label: 'Ubuntu 20.04' },
-    { value: 'nginx:alpine', label: 'Nginx Alpine' },
-    { value: 'postgres:15', label: 'PostgreSQL 15' }
-  ];
 
+  useEffect(() => {
+    const predefinedImages = async () => {
+      try {
+        const response = await invoke('distro_images');
+        if (response) {
+          console.log('Images:', response);
+          const mappedImages = Object.entries(response.Base_Images).map(([distro, data]) => {
+            return {
+              value: distro.toLowerCase().replace(/\s+/g, '-'), 
+              label: distro, 
+              versions: data.images.map(image => ({
+                value: image,  
+                label: image.split(':')[1] || image 
+              }))
+            };
+          });
+  
+          setPredefinedImages(mappedImages);
+        } else {
+          console.log('No images found');
+        }
+      } catch (error) {
+        console.log('Error fetching images:', error);
+      }
+    };
+    predefinedImages();
+  }, []);
+  
+  
+  
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (imageDropdownRef.current && !imageDropdownRef.current.contains(event.target)) {
@@ -66,7 +84,6 @@ export function CreateContainerModal({ isOpen, onClose, onSubmit }) {
   };
 
   const selectedImage = predefinedImages.find(img => img.value === containerData.selectedImage);
-  const selectedCustomImage = customImages.find(img => img.value === containerData.customImage);
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
@@ -109,50 +126,67 @@ export function CreateContainerModal({ isOpen, onClose, onSubmit }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">
-                    Base Image
-                  </label>
-                  <div className="relative" ref={imageDropdownRef}>
-                    <button
-                      type="button"
-                      onClick={() => setIsImageDropdownOpen(!isImageDropdownOpen)}
-                      className="w-full bg-zinc-800/50 text-zinc-100 rounded-xl px-4 py-3
-                        focus:outline-none focus:ring-2 focus:ring-orange-500/50
-                        border border-zinc-700/50 flex items-center justify-between
-                        hover:bg-zinc-700/50 transition-colors"
-                    >
-                      <span>{selectedImage?.label || 'Select image'}</span>
-                      <ChevronDown className={`w-4 h-4 transition-transform ${isImageDropdownOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    
-                    {isImageDropdownOpen && (
-                      <ul className="absolute z-10 w-full mt-2 overflow-auto rounded-xl border border-zinc-700/50
-                        bg-zinc-800 shadow-lg">
-                        {predefinedImages.map((image) => (
-                          <li
-                            key={image.value}
-                            className="cursor-pointer text-zinc-100 flex w-full text-sm items-center p-3
-                              transition-colors hover:bg-zinc-700/50 border-b border-zinc-700/50 last:border-0"
-                            onClick={() => {
-                              setContainerData({ ...containerData, selectedImage: image.value });
-                              setIsImageDropdownOpen(false);
-                            }}
-                          >
-                            <div className="flex flex-col">
-                              <span>{image.label}</span>
-                              <span className="text-xs text-zinc-400">{image.description}</span>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
+  <label className="block text-sm font-medium text-zinc-300 mb-2">
+    Base Image
+  </label>
+  <div className="relative" ref={imageDropdownRef}>
+    <button
+      type="button"
+      onClick={() => setIsImageDropdownOpen(!isImageDropdownOpen)}
+      className="w-full bg-zinc-800/50 text-zinc-100 rounded-xl px-4 py-3
+        focus:outline-none focus:ring-2 focus:ring-orange-500/50
+        border border-zinc-700/50 flex items-center justify-between
+        hover:bg-zinc-700/50 transition-colors"
+    >
+      <span>{selectedImage?.label || 'Select image'}</span>
+      <ChevronDown className={`w-4 h-4 transition-transform ${isImageDropdownOpen ? 'rotate-180' : ''}`} />
+    </button>
+    
+    {isImageDropdownOpen && (
+      <ul className="absolute z-10 w-full mt-2 overflow-auto rounded-xl border border-zinc-700/50
+        bg-zinc-800 shadow-lg max-h-[280px]">
+        {/* Custom Option */}
+        <li
+          className="cursor-pointer text-zinc-100 flex w-full text-sm items-center p-3
+            transition-colors hover:bg-zinc-700/50 border-b border-zinc-700/50 last:border-0"
+          onClick={() => {
+            setContainerData({ ...containerData, selectedImage: 'custom' });
+            setIsImageDropdownOpen(false);
+          }}
+        >
+          <div className="flex flex-col">
+            <span>Custom</span>
+            <span className="text-xs text-zinc-400">Enter your custom image name or URL</span>
+          </div>
+        </li>
 
-                {containerData.selectedImage === 'custom' && (
+        {/* Predefined Images */}
+        {predefinedImages.map((imageGroup) => (
+          <li
+            key={imageGroup.value}
+            className="cursor-pointer text-zinc-100 flex w-full text-sm items-center p-3
+              transition-colors hover:bg-zinc-700/50 border-b border-zinc-700/50 last:border-0"
+            onClick={() => {
+              setContainerData({ ...containerData, selectedImage: imageGroup.value });
+              setIsImageDropdownOpen(false);
+            }}
+          >
+            <div className="flex flex-col">
+              <span>{imageGroup.label}</span>
+              <span className="text-xs text-zinc-400">{imageGroup.versions.length} versions</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+</div>
+
+
+                {containerData.selectedImage !== 'custom' && selectedImage?.versions && (
                   <div>
                     <label className="block text-sm font-medium text-zinc-300 mb-2">
-                      Custom Image
+                      Image Version
                     </label>
                     <div className="relative" ref={customImageDropdownRef}>
                       <button
@@ -163,24 +197,24 @@ export function CreateContainerModal({ isOpen, onClose, onSubmit }) {
                           border border-zinc-700/50 flex items-center justify-between
                           hover:bg-zinc-700/50 transition-colors"
                       >
-                        <span>{selectedCustomImage?.label || 'Select custom image'}</span>
+                        <span>{containerData.customImage || `Select ${selectedImage.label} version`}</span>
                         <ChevronDown className={`w-4 h-4 transition-transform ${isCustomImageDropdownOpen ? 'rotate-180' : ''}`} />
                       </button>
                       
                       {isCustomImageDropdownOpen && (
                         <ul className="absolute z-10 w-full mt-2 overflow-auto rounded-xl border border-zinc-700/50
                           bg-zinc-800 shadow-lg">
-                          {customImages.map((image) => (
+                          {selectedImage.versions.map((version) => (
                             <li
-                              key={image.value}
+                              key={version.value}
                               className="cursor-pointer text-zinc-100 flex w-full text-sm items-center p-3
                                 transition-colors hover:bg-zinc-700/50 border-b border-zinc-700/50 last:border-0"
                               onClick={() => {
-                                setContainerData({ ...containerData, customImage: image.value });
+                                setContainerData({ ...containerData, customImage: version.value });
                                 setIsCustomImageDropdownOpen(false);
                               }}
                             >
-                              {image.label}
+                              {version.label}
                             </li>
                           ))}
                         </ul>
@@ -188,6 +222,24 @@ export function CreateContainerModal({ isOpen, onClose, onSubmit }) {
                     </div>
                   </div>
                 )}
+
+{containerData.selectedImage === 'custom' && (
+  <div>
+    <label className="block text-sm font-medium text-zinc-300 mb-2">
+      Custom Image
+    </label>
+    <input
+      type="text"
+      value={containerData.customImage}
+      onChange={(e) => setContainerData({ ...containerData, customImage: e.target.value })}
+      className="w-full bg-zinc-800/50 text-zinc-100 rounded-xl px-4 py-3
+        focus:outline-none focus:ring-2 focus:ring-orange-500/50
+        border border-zinc-700/50"
+      placeholder="Enter custom image name or URL"
+    />
+  </div>
+)}
+
               </div>
             </div>
 

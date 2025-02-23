@@ -1,43 +1,52 @@
 import { useEffect, useState } from 'react';
-import { Box, Plus, Terminal, Loader2, Settings } from 'lucide-react';
-import { CreateContainerModal } from './create-container-modal';
+import { Box, Plus, Loader2, Settings } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { CreateContainerModal } from './create-container-modal';
+import { useNavigate } from 'react-router-dom';
+
 
 
 export default function ContainerManager() {
   const [containers, setContainers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
+  const naviagte = useNavigate();
+  
   const handleAddContainer = () => {
-    setIsModalOpen(true);
+    setIsModalOpen(true); 
+    console.log('Modal opened');
   };
   
-  const handleCreateContainer = (containerData) => {
-    console.log("Creating container with data:", containerData);
+
+  const handleCreateContainer = async(containerData) => {
+
+   const response = await invoke('create_container', { container: containerData.name, image: containerData.customImage });
+   if(response){
+     console.log('Container created:',response);
+      setIsModalOpen(false);
+      naviagte('/containers');}
   };
 
   useEffect(() => {
     setIsLoading(true);
-    const fetchContainers = async() => {
+    const fetchContainers = async () => {
       try {
         const response = await invoke('list_containers');
-        if(response) {
+        if (response) {
           setContainers(response);
-        }
-        else {
+        } else {
           console.log('No containers found');
         }
       } catch (error) {
         console.error('Error fetching containers:', error);
-
-      }
-      finally{
+      } finally {
         setIsLoading(false);
       }
     };
     fetchContainers();
   }, []);
+
+
 
   if (isLoading) {
     return (
@@ -68,6 +77,7 @@ export default function ContainerManager() {
           onClose={() => setIsModalOpen(false)} 
           onSubmit={handleCreateContainer} 
         />
+
       </div>
     );
   }
@@ -77,12 +87,18 @@ export default function ContainerManager() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-white">Your Containers</h1>
         <button
-          onClick={handleAddContainer}
+          onClick={handleAddContainer} 
           className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-200 hover:scale-105"
         >
           <Plus className="w-4 h-4" />
           <span>New Container</span>
+          
         </button>
+        <CreateContainerModal 
+          isOpen={isModalOpen} 
+          onClose={() => setIsModalOpen(false)} 
+          onSubmit={handleCreateContainer} 
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -92,37 +108,25 @@ export default function ContainerManager() {
             className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:bg-gray-750 transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
           >
             <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-3">
-                {container.ICON ? (
+               <div className="flex items-center space-x-3">
+                
                   <img 
                     src={container.ICON}
                     alt={`${container.NAME} icon`}
                     className="w-8 h-8 rounded"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = null;
-                      e.target.className = "hidden";
-                      const parent = e.target.parentElement;
-                      if (parent) {
-                        const terminalIcon = document.createElement('div');
-                        terminalIcon.innerHTML = '<svg class="w-8 h-8 text-blue-400"><use href="#terminal-icon"/></svg>';
-                        parent.appendChild(terminalIcon);
-                      }
-                    }}
+                  
                   />
-                ) : (
-                  <Terminal className="w-8 h-8 text-blue-400" />
-                )}
+                
                 <div>
                   <h3 className="text-lg font-semibold text-white">{container.NAME}</h3>
                   <p className="text-sm text-gray-400">{container.STATUS}</p>
                 </div>
-              </div>
+              </div> 
               <span className="px-3 py-1 bg-gray-700 text-gray-300 rounded-full text-sm">
                 {container.IMAGE}
               </span>
             </div>
-            
+
             <div className="mt-6 pt-4 border-t border-gray-700">
               <button
                 className="flex items-center justify-center space-x-2 w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors duration-200"
@@ -134,6 +138,8 @@ export default function ContainerManager() {
           </div>
         ))}
       </div>
+      
     </div>
   );
-}
+ }
+
