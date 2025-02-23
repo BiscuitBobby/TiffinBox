@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 10%;
+    --foreground: 220 10% 98%;
+
+    --card: 220 20% 12%;
+    --card-foreground: 220 10% 98%;
+
+    --popover: 220 45% 8%;
+    --popover-foreground: 220 10% 98%;
+
+    --primary: 0 59% 41%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 20% 16%;
+    --secondary-foreground: 220 10% 90%;
+
+    --muted: 220 20% 14%;
+    --muted-foreground: 220 10% 60%;
+
+    --accent: 0 59% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 20% 18%;
+    --input: 220 20% 16%;
+    --ring: 0 59% 41%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+.glass-morphism {
+  @apply bg-opacity-20 backdrop-filter backdrop-blur-lg;
+}
+
+.gaussian-blur {
+  @apply backdrop-filter backdrop-blur-sm;
+}
+
+.neumorphic {
+  box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.3), -5px -5px 10px rgba(255, 255, 255, 0.05);
+}
+
+.gradient-accent {
+  @apply bg-gradient-to-r from-primary to-accent;
+}
+
+.space-background {
+  background-image: radial-gradient(circle at 1px 1px, theme("colors.gray.700") 1px, transparent 0);
+  background-size: 40px 40px;
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

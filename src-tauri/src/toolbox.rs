@@ -104,7 +104,7 @@ pub fn get_toolbox_json() -> Value {
           ]
         }
       },
-      "Base Images": {
+      "Base_Images": {
         "AlmaLinux": {
           "images": [
             "docker.io/library/almalinux:8",

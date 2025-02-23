@@ -1,33 +1,32 @@
-import { useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import './App.css'
+import { Layout } from './components/layout'
+import Lander from './components/lander'
+import ContainerManager from './components/container-manager'
+import ContainerCard from './components/container-card';
 
 
 function App() {
-  const [greeting, setGreeting] = useState('');
-  async function handleClick() {
-    try {
-      // Invoke the Rust function
-      const response = await invoke('greet', { name: 'User' });
-      setGreeting(response);
-    } catch (error) {
-      console.error('Error calling Rust function:', error);
-    }
-  }
+
+
+
 
   return (
+ <Router>
+      <Routes>
+        <Route path="/" element={<Lander />} />
+        <Route path="/containers" element={ 
+          <Layout><ContainerManager /></Layout>} />
+        <Route path="/container" element={
+          <Layout><ContainerCard /></Layout>
+        } />
+      </Routes>
+ </Router>
+   
     
-    <div className="container">
-    <h1>Tauri + React</h1>
-    <button onClick={handleClick}>
-      Call Rust Function
-    </button>
-    <div>
-    {greeting}
-    </div>
-  </div>
-
   )
 }
 
 export default App
+
