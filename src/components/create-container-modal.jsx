@@ -1,96 +1,294 @@
-import { useState } from "react";
-import { X } from "lucide-react";
+import { useState, useRef, useEffect } from 'react';
+import PropTypes from 'prop-types';
+import { X, Check, Box, Terminal, ChevronDown } from 'lucide-react';
 
 export function CreateContainerModal({ isOpen, onClose, onSubmit }) {
   const [containerData, setContainerData] = useState({
-    name: "",
-    image: "",
-    ports: "",
-    volumes: "",
+    name: '',
+    selectedImage: 'ubuntu',
+    customImage: '',
+    root: false,
+    flags: {
+      restart: false,
+      privileged: false,
+      interactive: false,
+      detach: false,
+    }
   });
+
+  const [isImageDropdownOpen, setIsImageDropdownOpen] = useState(false);
+  const [isCustomImageDropdownOpen, setIsCustomImageDropdownOpen] = useState(false);
+  const imageDropdownRef = useRef(null);
+  const customImageDropdownRef = useRef(null);
+
+  const predefinedImages = [
+    { value: 'ubuntu', label: 'Ubuntu', description: 'Latest Ubuntu LTS' },
+    { value: 'nginx', label: 'Nginx', description: 'Web server' },
+    { value: 'postgres', label: 'PostgreSQL', description: 'Database' },
+    { value: 'mongodb', label: 'MongoDB', description: 'NoSQL Database' },
+    { value: 'redis', label: 'Redis', description: 'In-memory cache' },
+    { value: 'custom', label: 'Custom Image', description: 'Use a custom image' }
+  ];
+
+  const customImages = [
+    { value: 'ubuntu:22.04', label: 'Ubuntu 22.04' },
+    { value: 'ubuntu:20.04', label: 'Ubuntu 20.04' },
+    { value: 'nginx:alpine', label: 'Nginx Alpine' },
+    { value: 'postgres:15', label: 'PostgreSQL 15' }
+  ];
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (imageDropdownRef.current && !imageDropdownRef.current.contains(event.target)) {
+        setIsImageDropdownOpen(false);
+      }
+      if (customImageDropdownRef.current && !customImageDropdownRef.current.contains(event.target)) {
+        setIsCustomImageDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(containerData);
+    const finalData = {
+      ...containerData,
+      image: containerData.selectedImage === 'custom' 
+        ? containerData.customImage 
+        : containerData.selectedImage,
+    };
+    onSubmit(finalData);
     onClose();
   };
 
+  const selectedImage = predefinedImages.find(img => img.value === containerData.selectedImage);
+  const selectedCustomImage = customImages.find(img => img.value === containerData.customImage);
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-lg p-6 w-96">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-white">Create New Container</h2>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-zinc-900 rounded-2xl w-full max-w-4xl shadow-2xl border border-zinc-800/50">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-zinc-800/50">
+          <div className="flex items-center gap-3">
+            <Box className="w-6 h-6 text-orange-500" />
+            <h2 className="text-xl font-semibold text-zinc-100">Create Container</h2>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-zinc-400 hover:text-zinc-200 transition-colors"
           >
-            <X size={20} />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Container Name
-            </label>
-            <input
-              type="text"
-              value={containerData.name}
-              onChange={(e) => setContainerData({ ...containerData, name: e.target.value })}
-              className="w-full bg-gray-700 text-white rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-600"
-              required
-            />
+        <form onSubmit={handleSubmit}>
+          <div className="flex divide-x divide-zinc-800/50">
+            {/* Left Section */}
+            <div className="w-1/2 p-6 space-y-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                    Container Name
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={containerData.name}
+                      onChange={(e) => setContainerData({ ...containerData, name: e.target.value })}
+                      className="w-full bg-zinc-800/50 text-zinc-100 rounded-xl pl-10 pr-4 py-3
+                        focus:outline-none focus:ring-2 focus:ring-orange-500/50
+                        border border-zinc-700/50"
+                      placeholder="my-container"
+                    />
+                    <Terminal className="absolute left-3 top-3.5 w-4 h-4 text-zinc-500" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                    Base Image
+                  </label>
+                  <div className="relative" ref={imageDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setIsImageDropdownOpen(!isImageDropdownOpen)}
+                      className="w-full bg-zinc-800/50 text-zinc-100 rounded-xl px-4 py-3
+                        focus:outline-none focus:ring-2 focus:ring-orange-500/50
+                        border border-zinc-700/50 flex items-center justify-between
+                        hover:bg-zinc-700/50 transition-colors"
+                    >
+                      <span>{selectedImage?.label || 'Select image'}</span>
+                      <ChevronDown className={`w-4 h-4 transition-transform ${isImageDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    {isImageDropdownOpen && (
+                      <ul className="absolute z-10 w-full mt-2 overflow-auto rounded-xl border border-zinc-700/50
+                        bg-zinc-800 shadow-lg">
+                        {predefinedImages.map((image) => (
+                          <li
+                            key={image.value}
+                            className="cursor-pointer text-zinc-100 flex w-full text-sm items-center p-3
+                              transition-colors hover:bg-zinc-700/50 border-b border-zinc-700/50 last:border-0"
+                            onClick={() => {
+                              setContainerData({ ...containerData, selectedImage: image.value });
+                              setIsImageDropdownOpen(false);
+                            }}
+                          >
+                            <div className="flex flex-col">
+                              <span>{image.label}</span>
+                              <span className="text-xs text-zinc-400">{image.description}</span>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+
+                {containerData.selectedImage === 'custom' && (
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-300 mb-2">
+                      Custom Image
+                    </label>
+                    <div className="relative" ref={customImageDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => setIsCustomImageDropdownOpen(!isCustomImageDropdownOpen)}
+                        className="w-full bg-zinc-800/50 text-zinc-100 rounded-xl px-4 py-3
+                          focus:outline-none focus:ring-2 focus:ring-orange-500/50
+                          border border-zinc-700/50 flex items-center justify-between
+                          hover:bg-zinc-700/50 transition-colors"
+                      >
+                        <span>{selectedCustomImage?.label || 'Select custom image'}</span>
+                        <ChevronDown className={`w-4 h-4 transition-transform ${isCustomImageDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      
+                      {isCustomImageDropdownOpen && (
+                        <ul className="absolute z-10 w-full mt-2 overflow-auto rounded-xl border border-zinc-700/50
+                          bg-zinc-800 shadow-lg">
+                          {customImages.map((image) => (
+                            <li
+                              key={image.value}
+                              className="cursor-pointer text-zinc-100 flex w-full text-sm items-center p-3
+                                transition-colors hover:bg-zinc-700/50 border-b border-zinc-700/50 last:border-0"
+                              onClick={() => {
+                                setContainerData({ ...containerData, customImage: image.value });
+                                setIsCustomImageDropdownOpen(false);
+                              }}
+                            >
+                              {image.label}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Section */}
+            <div className="w-1/2 p-6 space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-zinc-800/30 rounded-xl">
+                  <div>
+                    <label className="text-sm font-medium text-zinc-300">Root Access</label>
+                    <p className="text-xs text-zinc-500 mt-1">Enable root privileges for this container</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setContainerData({ ...containerData, root: !containerData.root })}
+                    className={`
+                      relative inline-flex h-7 w-12 items-center rounded-full
+                      transition-colors duration-200 ease-in-out
+                      focus:outline-none focus:ring-2 focus:ring-orange-500/50
+                      ${containerData.root ? 'bg-orange-500' : 'bg-zinc-700'}
+                    `}
+                  >
+                    <span className="sr-only">Toggle root access</span>
+                    <span
+                      className={`
+                        inline-block h-5 w-5 transform rounded-full bg-white shadow-lg
+                        transition duration-200 ease-in-out
+                        ${containerData.root ? 'translate-x-6' : 'translate-x-1'}
+                      `}
+                    />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-zinc-300">
+                    Container Flags
+                  </label>
+                  <div className="space-y-2 bg-zinc-800/30 rounded-xl p-2">
+                    {Object.entries({
+                      restart: 'Always restart',
+                      privileged: 'Privileged mode',
+                      interactive: 'Interactive (-it)',
+                      detach: 'Detached mode (-d)'
+                    }).map(([key, label]) => (
+                      <label key={key} className="flex items-center gap-3 p-2 rounded-lg
+                        hover:bg-zinc-700/50 transition-colors cursor-pointer">
+                        <div
+                          className={`
+                            w-5 h-5 rounded-md flex items-center justify-center
+                            transition-colors duration-200
+                            ${containerData.flags[key] 
+                              ? 'bg-orange-500 text-white' 
+                              : 'bg-zinc-700 text-transparent'}
+                            border border-zinc-600
+                          `}
+                          onClick={() => setContainerData({
+                            ...containerData,
+                            flags: {
+                              ...containerData.flags,
+                              [key]: !containerData.flags[key]
+                            }
+                          })}
+                        >
+                          <Check className="w-3 h-3" />
+                        </div>
+                        <span className="text-sm text-zinc-300">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Image
-            </label>
-            <input
-              type="text"
-              value={containerData.image}
-              onChange={(e) => setContainerData({ ...containerData, image: e.target.value })}
-              className="w-full bg-gray-700 text-white rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-600"
-              required
-            />
+          {/* Footer */}
+          <div className="flex justify-end gap-3 p-6 border-t border-zinc-800/50 bg-zinc-900/50">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl text-zinc-300 hover:bg-zinc-800/50
+                transition-colors duration-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-orange-500 text-white rounded-xl
+                hover:bg-orange-600 transition-colors duration-200
+                flex items-center gap-2"
+            >
+              <span>Create Container</span>
+              <Box className="w-4 h-4" />
+            </button>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Ports (optional)
-            </label>
-            <input
-              type="text"
-              value={containerData.ports}
-              onChange={(e) => setContainerData({ ...containerData, ports: e.target.value })}
-              placeholder="e.g., 8080:80"
-              className="w-full bg-gray-700 text-white rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-600"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Volumes (optional)
-            </label>
-            <input
-              type="text"
-              value={containerData.volumes}
-              onChange={(e) => setContainerData({ ...containerData, volumes: e.target.value })}
-              placeholder="e.g., /host/path:/container/path"
-              className="w-full bg-gray-700 text-white rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-600"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
-          >
-            Create Container
-          </button>
         </form>
       </div>
     </div>
   );
 }
+
+CreateContainerModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func.isRequired,
+};

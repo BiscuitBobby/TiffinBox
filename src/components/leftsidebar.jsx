@@ -1,19 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PropTypes from 'prop-types';
-import { Search, Plus } from "lucide-react";
+import { Search,  ArrowLeftToLine } from "lucide-react";
 import { CreateContainerModal } from "./create-container-modal";
+import { invoke } from "@tauri-apps/api/core";
+import { useNavigate } from "react-router-dom";
 
 export default function LeftSidebar({ isCollapsed, onToggle }) {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  const handleAddContainer = () => {
-    setIsModalOpen(true);
-  };
+  const [distros, setDistros] = useState([])
+  const navigate = useNavigate();
 
   const handleCreateContainer = (containerData) => {
     console.log("Creating container with data:", containerData);
   };
+
+  const handleBack = ()=>{
+    navigate('/containers');
+  }
 
  const  handleSearchButton = ()=>{
   if(!isModalOpen){
@@ -23,13 +27,36 @@ export default function LeftSidebar({ isCollapsed, onToggle }) {
       setIsSearchActive(!isSearchActive);
     }
   }
-  const distros = [
-    { name: "Ubuntu", color: "bg-orange-500" },
-    { name: "Fedora", color: "bg-blue-500" },
-    { name: "Debian", color: "bg-red-500" },
-    { name: "Arch", color: "bg-cyan-500" },
-    { name: "Mint", color: "bg-green-500" }
-  ];
+  
+
+  const handleContainerCard = (distro) =>{
+    return ()=>{
+      console.log('Selected container:',distro);
+      navigate('/container',{state:distro});
+    }
+  }
+
+  useEffect(() => {
+   
+   const containers = async() =>{
+    try {
+        const response = await invoke('list_containers');
+        if(response){
+            console.log('Containers:',response);
+            setDistros(response);
+           
+        }
+        else{
+            console.log('No containers found');
+           
+        }
+
+    } catch (error) {
+        console.log('Error fetching containers:',error);
+    }
+   }
+   containers();
+  }, []);
 
   return (
     <div className={`
@@ -52,16 +79,11 @@ export default function LeftSidebar({ isCollapsed, onToggle }) {
           {!isCollapsed && (
             <h2 className="text-lg font-semibold text-zinc-100">Containers</h2>
           )}
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={handleAddContainer}
-              className="p-2 text-zinc-400 hover:text-orange-400 hover:bg-zinc-700/50
-                rounded-lg transition-all duration-200"
-            >
-              <Plus className="h-5 w-5" />
-            </button>
-           
-          </div>
+          <button className="p-2 text-zinc-400 hover:text-orange-400 hover:bg-zinc-700/50
+              rounded-lg transition-all duration-200 flex items-center justify-center" onClick={handleBack}>
+
+          <ArrowLeftToLine />
+          </button>
         </div>
         
         <div className="flex items-center gap-2">
@@ -70,7 +92,7 @@ export default function LeftSidebar({ isCollapsed, onToggle }) {
               rounded-lg transition-all duration-200 flex items-center justify-center "
             onClick={handleSearchButton}
           >
-            <Search className="h-5 w-5" />
+            <Search className="h-6 w-5" />
             
           </button>
           {!isCollapsed && (
@@ -101,14 +123,14 @@ export default function LeftSidebar({ isCollapsed, onToggle }) {
           px-2 py-4
         ">
           <div className="flex flex-col items-center space-y-4">
-            {distros.map((distro, index) => (
+            {distros.map((distro) => (
               <div
-                key={index}
+                key={distro.ID}
                 className="group relative w-full flex justify-center"
               >
                 <div className={`
                   w-12 h-12
-                  ${distro.color}
+                  
                   bg-opacity-85
                   rounded-xl
                   flex items-center justify-center
@@ -122,26 +144,13 @@ export default function LeftSidebar({ isCollapsed, onToggle }) {
                   ring-1 ring-white/10
                   hover:ring-white/20
                 `}>
-                  {distro.name[0]}
+                  <button className="pointer" onClick={handleContainerCard(distro)}>
+                  {distro.NAME[0]}
+                  </button>
                 </div>
+                <img src={`${distro.ICON}`} alt="RANDOM" />
 
-                {/* Hover tooltip */}
-                <div className="
-                  absolute left-full ml-2 z-50
-                  hidden group-hover:block
-                  bg-zinc-800/95
-                  backdrop-blur-sm
-                  text-zinc-100
-                  px-3 py-2 rounded-lg
-                  whitespace-nowrap
-                  shadow-xl shadow-black/20
-                  text-sm
-                  border border-zinc-700/50
-                  transform
-                  transition-all duration-200
-                ">
-                  {distro.name}
-                </div>
+               
               </div>
             ))}
           </div>

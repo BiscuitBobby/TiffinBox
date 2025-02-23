@@ -1,24 +1,32 @@
+
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import './App.css'
-import ContainerCard from './components/container-card'
 import { Layout } from './components/layout'
+import Lander from './components/lander'
+import ContainerManager from './components/container-manager'
+import ContainerCard from './components/container-card';
 
 
 function App() {
-  const containers = [
-    { name: "Arch 1", status: "running", icon: "src/assets/icons/arch.svg" },
-  ]
+
+
+
 
   return (
-    
-    <Layout>
-      <div className="max-w-full min-w-1/2 max-h-1/2 min-h-1/4">
-        {containers.map((container) => (
-          <ContainerCard key={container.name} {...container} />
-        ))}
-      </div>
-      </Layout>
+ <Router>
+      <Routes>
+        <Route path="/" element={<Lander />} />
+        <Route path="/containers" element={ 
+          <Layout><ContainerManager /></Layout>} />
+        <Route path="/container" element={
+          <Layout><ContainerCard /></Layout>
+        } />
+      </Routes>
+ </Router>
+   
     
   )
 }
 
 export default App
+
