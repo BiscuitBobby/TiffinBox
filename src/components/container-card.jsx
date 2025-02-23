@@ -1,47 +1,70 @@
-import {  CircleCheck, KeyRound, Cog } from "lucide-react"
+import { CheckCircle as CircleCheck, KeyRound, Cog } from "lucide-react"
 import { OperationButtonTray } from "./operation-button-tray"
+import { useLocation } from "react-router-dom"
 
-import PropTypes from 'prop-types';
 
-export default function ContainerCard({ name, icon, status }) {
+export default function ContainerCard() {
+  const location = useLocation()
+  const distro = location.state
+
   return (
-    <div className="w-full h-full rounded-lg border bg-neutral-800 text-white shadow-sm">
-      <div className="p-6">
-        <div className="grid grid-cols-3 items-center justify-center py-10 lg:w-1/2 w-full">
-          <img 
-            src={icon} 
-            alt={name} 
-            className="mx-auto my-auto shadow-2xl rounded-full w-[100px] h-[100px] md:w-[125px] md:h-[125px] lg:w-[150px] lg:h-[150px] object-cover"
-          />
-          <div className="flex flex-col justify-left col-span-2 w-1/2">
-            <h2 className="text-lg font-medium pl-2">{name}</h2>
-            <OperationButtonTray containerID={name} status={status} />  
+    <div className="w-full min-h-[35vh] rounded-xl border border-neutral-700 bg-gradient-to-br from-neutral-800 to-neutral-900 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.01]">
+      <div className="p-8">
+       
+        <div className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-8">
+         
+          <div className="relative group">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
+            <img 
+              src={distro.ICON} 
+              alt={distro.NAME} 
+              className="relative w-[100px] h-[100px] md:w-[125px] md:h-[125px] lg:w-[150px] lg:h-[150px] rounded-full object-cover shadow-xl transition-transform duration-300 group-hover:scale-105"
+            />
+          </div>
+
+        
+          <div className="flex flex-col items-center md:items-start flex-grow">
+            <h2 className="text-2xl font-bold mb-4 text-center md:text-left bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+              {distro.NAME}
+            </h2>
+            <div className="w-full">
+              <OperationButtonTray containerID={distro.ID} status={distro.STATUS} />
+            </div>
           </div>
         </div>
-        <div className="flex flex-row items-center justify-between pt-5 border-t border-white">
-          <div className="flex flex-row items-center justify-evenly w-1/4">
-            <button id="overview" className="bg-zinc-900 text-white w-full mx-2 px-6 py-3 rounded-lg flex items-center justify-center gap-2 shadow-md">
-              <CircleCheck className="text-green-500" />
-              <span>Overview</span>
+
+       
+        <div className="pt-6 border-t border-neutral-700">
+          <div className="flex flex-col sm:flex-row gap-4 justify-start w-full sm:w-auto">
+          
+            <button 
+              id="overview" 
+              className="flex items-center justify-center gap-3 px-6 py-3 bg-neutral-900 hover:bg-neutral-800 rounded-lg transition-all duration-200 hover:shadow-lg group"
+            >
+              <CircleCheck className="w-5 h-5 text-emerald-500 transition-transform duration-200 group-hover:scale-110" />
+              <span className="font-medium">Overview</span>
             </button>
-            <button id="keys" className="bg-zinc-900 text-white w-full mx-2 px-6 py-3 rounded-lg flex items-center justify-center gap-2 shadow-md">
-              <KeyRound className="text-blue-500" />
-              <span>Keys</span>
+
+           
+            <button 
+              id="keys" 
+              className="flex items-center justify-center gap-3 px-6 py-3 bg-neutral-900 hover:bg-neutral-800 rounded-lg transition-all duration-200 hover:shadow-lg group"
+            >
+              <KeyRound className="w-5 h-5 text-blue-500 transition-transform duration-200 group-hover:scale-110" />
+              <span className="font-medium">Keys</span>
             </button>
-            <button id="settings" className="bg-zinc-900 text-white w-full mx-2 px-6 py-3 rounded-lg flex items-center justify-center gap-2 shadow-md">
-              <Cog className="text-yellow-500" />
-              <span>Settings</span>
+  {/* Settings Button */}
+            <button 
+              id="settings" 
+              className="flex items-center justify-center gap-3 px-6 py-3 bg-neutral-900 hover:bg-neutral-800 rounded-lg transition-all duration-200 hover:shadow-lg group"
+            >
+              <Cog className="w-5 h-5 text-amber-500 transition-transform duration-200 group-hover:scale-110" />
+              <span className="font-medium">Settings</span>
             </button>
           </div>
-   
         </div>
       </div>
     </div>
   )
 }
 
-ContainerCard.propTypes = {
-  name: PropTypes.string.isRequired,
-  icon: PropTypes.string.isRequired,
-  status: PropTypes.string.isRequired,
-}

@@ -8,8 +8,8 @@ import { RightSidebar } from "./rightsidebar";
 import { TerminalProvider } from "@/hooks/modal-context";
 
 export function Layout({ children }) {
-  const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false);
-  const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(false);
+  const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(true);
+  const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(true);
 
   return (
     <TerminalProvider>
