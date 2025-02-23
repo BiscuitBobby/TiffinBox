@@ -1,7 +1,7 @@
 import './App.css'
 import ContainerCard from './components/container-card'
+import TerminalComponent from './components/terminal_test'
 import { Layout } from './components/layout'
-
 
 function App() {
   const containers = [
@@ -12,9 +12,10 @@ function App() {
     
     <Layout>
       <div className="max-w-full min-w-1/2 max-h-1/2 min-h-1/4">
-        {containers.map((container) => (
+        {/* {containers.map((container) => (
           <ContainerCard key={container.name} {...container} />
-        ))}
+        ))} */}
+        <TerminalComponent />
       </div>
       </Layout>
     
