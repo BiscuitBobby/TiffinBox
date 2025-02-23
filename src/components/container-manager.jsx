@@ -5,22 +5,14 @@ import { CreateContainerModal } from './create-container-modal';
 import { useNavigate } from 'react-router-dom';
 import { ContainerCardGrid } from './container-card-grid';
 
-// Mock metrics for demonstration
-const addMetrics = (containers) => containers.map(container => ({
-  ...container,
-  metrics: {
-    cpu: Math.floor(Math.random() * 100),
-    memory: Math.floor(Math.random() * 100)
-  }
-}));
-
 export default function ContainerManager() {
   const [containers, setContainers] = useState([]);
-  const [localcontainers, setLocalContainers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
   
+  const [containerMetrics, setContainerMetrics] = useState({});
+
   const handleAddContainer = () => {
     setIsModalOpen(true);
   };
@@ -40,38 +32,51 @@ export default function ContainerManager() {
     navigate(`/container/${containerId}`);
   };
 
+  const fetchMetrics = async () => {
+    try {
+      const metrics = await invoke('get_all_containers_status');
+      const metricsMap = {};
+      
+      metrics.forEach(container => {
+        if (container.status === 'success' && container.stats) {
+          const cpuPercent = container.stats.CPUPerc || '0%';
+          const memPercent = container.stats.MemPerc || '0%';
+          
+          metricsMap[container.id] = {
+            cpu: parseFloat(cpuPercent.replace('%', '')),
+            memory: parseFloat(memPercent.replace('%', ''))
+          };
+        }
+      });
+      
+      setContainerMetrics(metricsMap);
+    } catch (error) {
+      console.error('Error fetching metrics:', error);
+    }
+  };
+
   useEffect(() => {
     setIsLoading(true);
     const fetchContainers = async () => {
-        try {
-            const response = await invoke('list_containers');
-            if (response) {
-                setLocalContainers(response);
-                
-                // Fetch individual container stats
-                const containerStats = await Promise.all(
-                    response.map(async (container) => {
-                        try {
-                            const stats = await invoke('get_container_status', { cid: container.id });
-                            return { ...container, stats: stats[0] }; // Assuming stats is an array with a single object
-                        } catch (error) {
-                            console.error(`Error fetching stats for container ${container.id}:`, error);
-                            return { ...container, stats: null };
-                        }
-                    })
-                );
-                
-                setContainers(containerStats);
-            }
-        } catch (error) {
-            console.error('Error fetching containers:', error);
-        } finally {
-            setIsLoading(false);
+      try {
+        const response = await invoke('list_containers');
+        
+        if (response) {
+          setContainers(response);
+          await fetchMetrics();
         }
+      } catch (error) {
+        console.error('Error fetching containers:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchContainers();
-}, []);
 
+    const metricsInterval = setInterval(fetchMetrics, 2000);
+
+    return () => clearInterval(metricsInterval);
+  }, []);
 
   if (isLoading) {
     return (
@@ -125,7 +130,10 @@ export default function ContainerManager() {
       </div>
 
       <ContainerCardGrid 
-        containers={containers}
+        containers={containers.map(container => ({
+          ...container,
+          metrics: containerMetrics[container.ID] || { cpu: 0, memory: 0 }
+        }))}
         onManageContainer={handleManageContainer}
       />
     </div>

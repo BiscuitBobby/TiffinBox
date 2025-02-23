@@ -7,11 +7,21 @@ const useTerminalStore = create((set, get) => ({
   terminalRef: null,
   
   setTerminalRef: (ref) => set({ terminalRef: ref }),
-  toggleTerminal: () => set(state => ({ isTerminalOpen: !state.isTerminalOpen })),
+  toggleTerminal: () => {
+    const state = get()
+    set({ isTerminalOpen: !state.isTerminalOpen })
+    // Ensure terminal fits after toggle
+    if (!state.isTerminalOpen && state.terminalRef?.current) {
+      setTimeout(() => {
+        state.terminalRef.current.fitTerminal()
+      }, 100)
+    }
+  },
   closeTerminal: () => set({ isTerminalOpen: false }),
   setDistroState: (isActive, distroId) => set({ 
     isDistroActive: isActive, 
-    activeDistroId: distroId 
+    activeDistroId: distroId,
+    isTerminalOpen: true // Auto-open terminal when distro becomes active
   }),
   // Add helper method to safely exit distro
   safeExitDistro: async () => {

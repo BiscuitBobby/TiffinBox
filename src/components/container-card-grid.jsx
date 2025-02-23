@@ -75,13 +75,13 @@ function ContainerCard({ container, onManage }) {
       {/* Metrics */}
       <div className="flex justify-around mb-6">
         <CircularProgress 
-          value={container.metrics.cpu} 
-          label="CPU" 
+          value={parseFloat(container.metrics.cpu)} 
+          label="CPU %" 
           color="text-blue-500" 
         />
         <CircularProgress 
-          value={container.metrics.memory} 
-          label="Memory" 
+          value={parseFloat(container.metrics.memory)} 
+          label="Memory %" 
           color="text-purple-500" 
         />
       </div>

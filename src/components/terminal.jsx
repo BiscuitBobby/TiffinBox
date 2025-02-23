@@ -14,20 +14,21 @@ const TerminalComponent = forwardRef((props, ref) => {
 
   useImperativeHandle(ref, () => ({
     fitTerminal: () => {
-      console.log('Fitting terminal to container')
       if (fitAddonRef.current && termRef.current) {
-        fitAddonRef.current.fit();
-        invoke("async_resize_pty", {
-          rows: termRef.current.rows,
-          cols: termRef.current.cols,
-        }).catch(error => console.error('Error resizing PTY:', error));
+        try {
+          fitAddonRef.current.fit();
+          invoke("async_resize_pty", {
+            rows: termRef.current.rows,
+            cols: termRef.current.cols,
+          }).catch(error => console.error('Error resizing PTY:', error));
+        } catch (error) {
+          console.error('Error fitting terminal:', error);
+        }
       }
     },
     writeToPty: async (data) => {
-      console.log('Writing to PTY:', data)
       try {
         await invoke("async_write_to_pty", { data });
-        console.log('Successfully wrote to PTY')
       } catch (error) {
         console.error("Write error:", error);
       }
@@ -40,22 +41,18 @@ const TerminalComponent = forwardRef((props, ref) => {
     const initializeTerminal = async () => {
       termRef.current = new Terminal({
         fontFamily: "'JetBrains Mono', 'Cascadia Code', monospace",
-        fontSize: 16,
+        fontSize: 14,
         theme: {
           background: "rgb(29,41,61)",
+          foreground: "#ffffff",
+          cursor: "#ffffff"
         },
         cursorBlink: true,
         convertEol: true,
         scrollback: 1000,
         allowProposedApi: true,
         macOptionIsMeta: true,
-        allowTransparency: false,
-        disableStdin: false,
-        screenReaderMode: false,
-        rendererType: 'canvas',
-        fastScrollModifier: true,
-        fastScrollSensitivity: 5,
-        minimumContrastRatio: 1,
+        allowTransparency: true,
       });
 
       const term = termRef.current;
@@ -65,14 +62,17 @@ const TerminalComponent = forwardRef((props, ref) => {
       term.loadAddon(fitAddon);
       term.open(terminalRef.current);
 
-      // Setup ResizeObserver
       resizeObserverRef.current = new ResizeObserver(debounce(() => {
         if (terminalRef.current && term && fitAddon) {
-          fitAddon.fit();
-          invoke("async_resize_pty", {
-            rows: term.rows,
-            cols: term.cols,
-          }).catch(console.error);
+          try {
+            fitAddon.fit();
+            invoke("async_resize_pty", {
+              rows: term.rows,
+              cols: term.cols,
+            }).catch(console.error);
+          } catch (error) {
+            console.error('Resize error:', error);
+          }
         }
       }, 100));
 
@@ -146,13 +146,14 @@ const TerminalComponent = forwardRef((props, ref) => {
         if (resizeObserverRef.current) {
           resizeObserverRef.current.disconnect();
         }
+        term.dispose();
       };
     };
 
     initializeTerminal();
   }, []);
 
-  return <div ref={terminalRef} className="h-full w-full" />;
+  return <div ref={terminalRef} className="h-full w-full bg-[rgb(29,41,61)]" />;
 });
 
 function debounce(fn, ms) {
