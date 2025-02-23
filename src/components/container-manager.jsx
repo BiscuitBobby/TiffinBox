@@ -13,8 +13,9 @@ export default function ContainerManager() {
   const naviagte = useNavigate();
   
   const handleAddContainer = () => {
-    setIsModalOpen(true); 
-    console.log('Modal opened');
+    console.log('Add container clicked!!');
+    console.log(isModalOpen);
+    setIsModalOpen(true);
   };
   
 
@@ -67,7 +68,7 @@ export default function ContainerManager() {
         </p>
         <button
           onClick={handleAddContainer}
-          className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg text-lg font-semibold transition-all duration-200 hover:scale-105 hover:shadow-lg"
+          className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg text-lg font-semibold transition-all duration-200hover:shadow-lg"
         >
           <Plus className="w-5 h-5" />
           <span>Create New Container</span>
@@ -83,21 +84,21 @@ export default function ContainerManager() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 overflow-y-auto overflow-x-hidden">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-white">Your Containers</h1>
         <button
-          onClick={handleAddContainer} 
-          className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-200 hover:scale-105"
+          onClick={handleAddContainer}
+          className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-200"
         >
           <Plus className="w-4 h-4" />
           <span>New Container</span>
           
         </button>
         <CreateContainerModal 
-          isOpen={isModalOpen} 
-          onClose={() => setIsModalOpen(false)} 
-          onSubmit={handleCreateContainer} 
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={handleCreateContainer}
         />
       </div>
 
@@ -105,7 +106,7 @@ export default function ContainerManager() {
         {containers.map((container) => (
           <div
             key={container.ID}
-            className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:bg-gray-750 transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+            className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:bg-gray-750 transition-all duration-200 hover:shadow-lg"
           >
             <div className="flex items-start justify-between">
                <div className="flex items-center space-x-3">
