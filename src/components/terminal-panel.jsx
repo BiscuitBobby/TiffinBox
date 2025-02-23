@@ -2,6 +2,7 @@ import { useTerminal } from "@/hooks/modal-context";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 import PropTypes from "prop-types";
 import TerminalComponent from "./terminal";
+import { useRef } from "react";
 
 export function TerminalPanel({ distroName }) {
   TerminalPanel.propTypes = {
@@ -9,6 +10,7 @@ export function TerminalPanel({ distroName }) {
   };
 
   const { isTerminalOpen, openTerminal, closeTerminal } = useTerminal();
+  const terminalInstanceRef = useRef(null);
 
   const toggleTerminal = () => {
     if (isTerminalOpen) {
@@ -33,11 +35,9 @@ export function TerminalPanel({ distroName }) {
           </button>
         </div>
       </div>
-      {isTerminalOpen && (
-        <div className="h-[calc(100%-40px)] w-full">
-          <TerminalComponent />
-        </div>
-      )}
+      <div className={`h-[calc(100%-40px)] w-full ${isTerminalOpen ? '' : 'hidden'}`}>
+        <TerminalComponent ref={terminalInstanceRef} />
+      </div>
     </div>
   );
 }
