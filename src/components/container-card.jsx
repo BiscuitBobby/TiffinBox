@@ -8,7 +8,7 @@ export default function ContainerCard() {
   const distro = location.state
 
   return (
-    <div className="w-full min-h-[35vh] rounded-xl border border-neutral-700 bg-gradient-to-br from-neutral-800 to-neutral-900 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.01]">
+    <div className="w-full min-h-[35vh] rounded-xl border border-neutral-700 bg-gradient-to-br from-neutral-800 to-neutral-900 text-white shadow-lg transition-all duration-300 hover:shadow-xl">
       <div className="p-8">
        
         <div className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-8">
@@ -18,7 +18,7 @@ export default function ContainerCard() {
             <img 
               src={distro.ICON} 
               alt={distro.NAME} 
-              className="relative w-[100px] h-[100px] md:w-[125px] md:h-[125px] lg:w-[150px] lg:h-[150px] rounded-full object-cover shadow-xl transition-transform duration-300 group-hover:scale-105"
+              className="relative w-[100px] h-[100px] md:w-[125px] md:h-[125px] lg:w-[150px] lg:h-[150px] rounded-full object-cover shadow-xl transition-transform duration-300"
             />
           </div>
 
