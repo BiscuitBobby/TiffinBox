@@ -1,26 +1,26 @@
 // // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 // #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+use dirs;
+use lazy_static::lazy_static;
+use serde_json::{json, Value};
+use shellexpand;
 use std::collections::{HashMap, HashSet};
-use std::process::{Command, Stdio};
-use std::time::{Duration, Instant};
+use std::error::Error;
+use std::fs;
+use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use serde_json::{json, Value};
-use lazy_static::lazy_static;
-use std::error::Error;
-use std::sync::Mutex;
-use std::fs::File;
-use shellexpand;
+use std::process::{Command, Stdio};
 use std::str;
-use std::fs;
-use dirs;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 mod toolbox;
 
-
 // --- Get Icon List --- //
 lazy_static! {
-    static ref ICON_CACHE: Mutex<(HashMap<String, Option<String>>, Instant)> = Mutex::new((HashMap::new(), Instant::now()));
+    static ref ICON_CACHE: Mutex<(HashMap<String, Option<String>>, Instant)> =
+        Mutex::new((HashMap::new(), Instant::now()));
 }
 
 fn copy_icon_to_assets(icon_path: &str) -> Result<String, String> {
@@ -83,9 +83,11 @@ fn find_distrobox_icons() -> Result<HashMap<String, Option<String>>, String> {
                                 let icon_path_resolved = shellexpand::tilde(icon_path).to_string();
 
                                 if Path::new(&icon_path_resolved).exists() {
-                                    if let Ok(new_location) = copy_icon_to_assets(&icon_path_resolved) {
-                                        icons.insert(container.to_string(), Some(new_location));
-                                    }
+                                    // if let Ok(new_location) =
+                                    //     copy_icon_to_assets(&icon_path_resolved)
+                                    // {
+                                    //     icons.insert(container.to_string(), Some(new_location));
+                                    // }
                                     break;
                                 }
                             }
@@ -103,7 +105,7 @@ fn get_cached_icons() -> Result<HashMap<String, Option<String>>, String> {
     let mut cache = ICON_CACHE.lock().map_err(|e| e.to_string())?;
     let now = Instant::now();
 
-    if now.duration_since(cache.1) > Duration::from_secs(300) {
+    if now.duration_since(cache.1) > Duration::from_secs(30000) {
         *cache = (find_distrobox_icons()?, now);
     }
 
@@ -304,11 +306,10 @@ fn detect_container_runtime() -> Option<String> {
     None // No container runtime found
 }
 
-
 /// Lists containers using the detected runtime
 fn list_all_containers() -> Result<Vec<Value>, Box<dyn Error>> {
     let runtime = detect_container_runtime().ok_or("No container runtime detected")?;
-    
+
     let output = Command::new(runtime)
         .args(&["ps", "-a", "--format", "json"])
         .stdout(Stdio::piped())
@@ -376,7 +377,8 @@ fn get_all_containers_status() -> Result<Vec<Value>, String> {
     let containers = list_all_containers().map_err(|e| e.to_string())?;
 
     let distrobox_ids: HashSet<String> = match distrobox_ids.as_array() {
-        Some(array) => array.iter()
+        Some(array) => array
+            .iter()
             .filter_map(|id| id.as_str().map(String::from)) // Convert JSON strings to Rust strings
             .collect(),
         None => return Err("Invalid format for distrobox container IDs".to_string()),
@@ -404,7 +406,8 @@ fn get_all_containers_status() -> Result<Vec<Value>, String> {
     for container_id in matching_ids {
         match get_container_status(&container_id) {
             Ok(status) => container_statuses.push(json!({ "id": container_id, "status": status })),
-            Err(_) => container_statuses.push(json!({ "id": container_id, "error": "Failed to retrieve status" })),
+            Err(_) => container_statuses
+                .push(json!({ "id": container_id, "error": "Failed to retrieve status" })),
         }
     }
 
@@ -434,25 +437,7 @@ fn check_distrobox() -> bool {
             return true;
         }
     }
-    
-    false
-}
 
-fn check_distrobox() -> bool {
-    let paths = [
-        "/bin/distrobox",
-        "/sbin/distrobox",
-        "/usr/bin/distrobox",
-        "/usr/sbin/distrobox",
-        "/usr/local/bin/distrobox",
-        "/usr/local/sbin/distrobox",
-    ];
-
-    for path in paths.iter() {
-        if Path::new(path).exists() {
-            return true;
-        }
-    }
     false
 }
 
