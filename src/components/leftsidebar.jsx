@@ -4,12 +4,17 @@ import { Search,  ArrowLeftToLine } from "lucide-react";
 import { CreateContainerModal } from "./create-container-modal";
 import { invoke } from "@tauri-apps/api/core";
 import { useNavigate } from "react-router-dom";
+import { DISTRO_ICONS } from '../utils/container-icons';
+import { extractDistroName } from '../utils/container-utils';
 
 export default function LeftSidebar({ isCollapsed, onToggle }) {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [distros, setDistros] = useState([])
   const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredDistros, setFilteredDistros] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   const handleCreateContainer = (containerData) => {
     console.log("Creating container with data:", containerData);
@@ -34,6 +39,30 @@ export default function LeftSidebar({ isCollapsed, onToggle }) {
       console.log('Selected container:',distro);
       navigate('/container',{state:distro});
     }
+  }
+
+  const handleSearch = (e) => {
+    const term = e.target.value;
+    setSearchTerm(term);
+    setShowDropdown(true);
+
+    if (term.trim() === '') {
+      setFilteredDistros([]);
+      setShowDropdown(false);
+      return;
+    }
+
+    const filtered = distros.filter(distro =>
+      distro.NAME?.toLowerCase().includes(term.toLowerCase()) ||
+      distro.STATUS?.toLowerCase().includes(term.toLowerCase())
+    );
+    setFilteredDistros(filtered);
+  }
+
+  const handleDistroSelect = (distro) => {
+    setSearchTerm(distro.NAME);
+    setShowDropdown(false);
+    navigate('/container', { state: distro });
   }
 
   useEffect(() => {
@@ -87,23 +116,43 @@ export default function LeftSidebar({ isCollapsed, onToggle }) {
         </div>
         
         <div className="flex items-center gap-2">
-          <button 
+          <button
             className="p-2 text-zinc-400 hover:text-orange-400 hover:bg-zinc-700/50
-              rounded-lg transition-all duration-200 flex items-center justify-center "
+              rounded-lg transition-all duration-200 flex items-center justify-center"
             onClick={handleSearchButton}
           >
             <Search className="h-6 w-5" />
-            
           </button>
           {!isCollapsed && (
-            <input
-              type="text"
-              placeholder="Search containers..."
-              className="w-full bg-zinc-800/50 text-zinc-100 rounded-xl px-4 py-2
-                focus:outline-none focus:ring-2 focus:ring-orange-500/50
-                border border-zinc-700/50
-                placeholder-zinc-500"
-            />
+            <div className="w-full relative">
+              <input
+                type="text"
+                value={searchTerm}
+                placeholder="Search containers..."
+                className="w-full bg-zinc-800/50 text-zinc-100 rounded-xl px-4 py-2
+                  focus:outline-none focus:ring-2 focus:ring-orange-500/50
+                  border border-zinc-700/50
+                  placeholder-zinc-500"
+                onChange={handleSearch}
+              />
+              {showDropdown && filteredDistros.length > 0 && (
+                <div className="absolute w-full mt-1 bg-zinc-800 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto">
+                  {filteredDistros.map((distro) => (
+                    <div
+                      key={distro.ID}
+                      className="px-4 py-2 hover:bg-zinc-700 cursor-pointer text-zinc-100 flex items-center gap-2"
+                      onClick={() => handleDistroSelect(distro)}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center">
+                        {distro.NAME?.[0]}
+                      </div>
+                      <span>{distro.NAME}</span>
+                      <span className="text-sm text-zinc-400">({distro.STATUS})</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -123,41 +172,42 @@ export default function LeftSidebar({ isCollapsed, onToggle }) {
           px-2 py-4
         ">
           <div className="flex flex-col items-center space-y-4">
-            {distros.map((distro) => (
-              <div
-                key={distro.ID}
-                className="group relative w-full flex justify-center"
-              >
-                <div className={`
-                  w-12 h-12
-                  
-                  bg-opacity-85
-                  rounded-xl
-                  flex items-center justify-center
-                  text-white font-medium text-lg
-                  shadow-lg shadow-black/10
-                  hover:scale-105
-                  hover:shadow-xl
-                  hover:shadow-black/20
-                  transition-all duration-200
-                  cursor-pointer
-                  ring-1 ring-white/10
-                  hover:ring-white/20
-                `}>
-                 <button className="pointer" onClick={handleContainerCard(distro)}>
-                  <img 
-                    src={`/assets/${distro.IMAGE}.png`} 
-                    alt="RANDOM" 
-                    className="w-10 h-10 rounded-full shadow-md transition-transform duration-300 ease-in-out transform hover:scale-110"
-                  />
-                  </button>
-
+            {distros.map((distro) => {
+              const distroName = extractDistroName(distro.IMAGE);
+              const distroIcon = DISTRO_ICONS[distroName];
+              console.log('Distro icon for', distroName, ':', distroIcon);
+              
+              return (
+                <div
+                  key={distro.ID}
+                  className="group relative w-full flex justify-center"
+                >
+                  <div className={`
+                    w-12 h-12
+                    bg-opacity-85
+                    rounded-xl
+                    flex items-center justify-center
+                    text-white font-medium text-lg
+                    shadow-lg shadow-black/10
+                    hover:scale-105
+                    hover:shadow-xl
+                    hover:shadow-black/20
+                    transition-all duration-200
+                    cursor-pointer
+                    ring-1 ring-white/10
+                    hover:ring-white/20
+                  `}>
+                    <button className="pointer" onClick={handleContainerCard(distro)}>
+                      <img 
+                        src='src/assets/icons/ubuntu.png'
+                        alt={distroName} 
+                        className="w-10 h-10 rounded-full shadow-md transition-transform duration-300 ease-in-out transform hover:scale-110"
+                      />
+                    </button>
+                  </div>
                 </div>
-               
-
-               
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
