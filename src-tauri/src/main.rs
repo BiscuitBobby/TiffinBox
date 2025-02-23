@@ -264,7 +264,15 @@ fn check_distrobox() -> bool {
 
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![
+            check_distrobox,
+            list_containers,
+            start_container,
+            stop_container,
+            remove_container,
+            create_container,
+            distro_images,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

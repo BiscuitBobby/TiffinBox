@@ -17,7 +17,7 @@ export default function Lander() {
         const response = await invoke('check_distrobox');
   
         if(response){
-          console.log('Dzistrobox is installed',response);
+          console.log('Distrobox is installed',response);
           setIsDistroboxInstalled(true)
          
         }
