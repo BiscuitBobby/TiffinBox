@@ -4,24 +4,38 @@ use std::collections::{HashMap, HashSet};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 use std::io::{BufRead, BufReader};
+use std::path::{Path, PathBuf};
 use serde_json::{json, Value};
 use lazy_static::lazy_static;
 use std::error::Error;
 use std::sync::Mutex;
-use std::path::Path;
 use std::fs::File;
 use shellexpand;
 use std::str;
+use std::fs;
 use dirs;
-
 
 mod toolbox;
 
 
 // --- Get Icon List --- //
 lazy_static! {
-    static ref ICON_CACHE: Mutex<(HashMap<String, Option<String>>, Instant)> =
-        Mutex::new((HashMap::new(), Instant::now()));
+    static ref ICON_CACHE: Mutex<(HashMap<String, Option<String>>, Instant)> = Mutex::new((HashMap::new(), Instant::now()));
+}
+
+fn copy_icon_to_assets(icon_path: &str) -> Result<String, String> {
+    let assets_dir = PathBuf::from("src/assets");
+    if !assets_dir.exists() {
+        fs::create_dir_all(&assets_dir).map_err(|e| e.to_string())?;
+    }
+
+    let icon_path_buf = PathBuf::from(icon_path);
+    if let Some(file_name) = icon_path_buf.file_name() {
+        let new_path = assets_dir.join(file_name);
+        fs::copy(&icon_path_buf, &new_path).map_err(|e| e.to_string())?;
+        return Ok(new_path.to_string_lossy().to_string());
+    }
+    Err("Failed to determine icon file name".to_string())
 }
 
 fn find_distrobox_icons() -> Result<HashMap<String, Option<String>>, String> {
@@ -31,7 +45,6 @@ fn find_distrobox_icons() -> Result<HashMap<String, Option<String>>, String> {
         .ok_or("Could not find home directory")?
         .join(".local/share/applications");
 
-    // Read directory entries once
     if let Ok(entries) = std::fs::read_dir(&desktop_dir) {
         let desktop_files: Vec<_> = entries
             .filter_map(Result::ok)
@@ -44,7 +57,6 @@ fn find_distrobox_icons() -> Result<HashMap<String, Option<String>>, String> {
             })
             .collect();
 
-        // Get container list first
         let output = Command::new("distrobox-list")
             .arg("--no-color")
             .output()
@@ -52,7 +64,6 @@ fn find_distrobox_icons() -> Result<HashMap<String, Option<String>>, String> {
 
         let stdout = String::from_utf8(output.stdout).map_err(|e| e.to_string())?;
 
-        // Process each container
         for line in stdout.lines().skip(1) {
             if let Some(container) = line
                 .split('|')
@@ -62,7 +73,6 @@ fn find_distrobox_icons() -> Result<HashMap<String, Option<String>>, String> {
             {
                 icons.insert(container.to_string(), None);
 
-                // Check each desktop file
                 for entry in &desktop_files {
                     if let Ok(file) = File::open(entry.path()) {
                         let reader = BufReader::new(file);
@@ -73,7 +83,9 @@ fn find_distrobox_icons() -> Result<HashMap<String, Option<String>>, String> {
                                 let icon_path_resolved = shellexpand::tilde(icon_path).to_string();
 
                                 if Path::new(&icon_path_resolved).exists() {
-                                    icons.insert(container.to_string(), Some(icon_path_resolved));
+                                    if let Ok(new_location) = copy_icon_to_assets(&icon_path_resolved) {
+                                        icons.insert(container.to_string(), Some(new_location));
+                                    }
                                     break;
                                 }
                             }
@@ -91,7 +103,6 @@ fn get_cached_icons() -> Result<HashMap<String, Option<String>>, String> {
     let mut cache = ICON_CACHE.lock().map_err(|e| e.to_string())?;
     let now = Instant::now();
 
-    // Refresh cache if older than 5 minutes
     if now.duration_since(cache.1) > Duration::from_secs(300) {
         *cache = (find_distrobox_icons()?, now);
     }
