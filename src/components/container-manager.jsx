@@ -79,12 +79,17 @@ export default function ContainerManager() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-white">Your Containers</h1>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleAddContainer}
           className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-200"
         >
           <Plus className="w-4 h-4" />
           <span>New Container</span>
         </button>
+        <CreateContainerModal 
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={handleCreateContainer}
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
