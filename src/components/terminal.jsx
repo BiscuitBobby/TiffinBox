@@ -17,63 +17,115 @@ const TerminalComponent = () => {
       cursorBlink: true,
       convertEol: true,
       scrollback: 1000,
+      allowProposedApi: true,
+      macOptionIsMeta: true,
+      allowTransparency: false,
+      disableStdin: false,
+      screenReaderMode: false,
+      rendererType: 'canvas',
+      fastScrollModifier: true,
+      fastScrollSensitivity: 5,
+      minimumContrastRatio: 1,
     })
   );
 
   useEffect(() => {
     const term = termRef.current;
     const fitAddon = fitAddonRef.current;
+    let isReading = true;
 
     if (terminalRef.current) {
       term.loadAddon(fitAddon);
       term.open(terminalRef.current);
 
-      const initShell = async () => {
-        try {
-          await invoke("async_create_shell");
-        } catch (error) {
-          console.error("Error creating shell:", error);
+      const writeBuffer = {
+        data: '',
+        timeout: null,
+        flush() {
+          if (this.data) {
+            term.write(this.data);
+            this.data = '';
+          }
+          this.timeout = null;
         }
       };
 
-      const fitTerminal = async () => {
-        fitAddon.fit();
-        await invoke("async_resize_pty", {
-          rows: term.rows,
-          cols: term.cols,
-        });
-      };
-
       const writeToPty = async (data) => {
-        if (data === '\r' || data === '\n') {
-          await invoke("async_write_to_pty", { data: '\n' });
-        } else {
+        try {
+          if (data.length === 1) {
+            await invoke("async_write_to_pty", { data });
+            return;
+          }
+          
+          if (data === '\r' || data === '\n') {
+            await invoke("async_write_to_pty", { data: '\n' });
+            return;
+          }
+          
           await invoke("async_write_to_pty", { data });
+        } catch (error) {
+          console.error("Write error:", error);
         }
       };
 
       const readFromPty = async () => {
+        if (!isReading) return;
+        
         try {
           const data = await invoke("async_read_from_pty");
           if (data) {
-            term.write(data.replace(/\n/g, '\r\n'));
+            if (data.length < 32) {
+              term.write(data.replace(/\n/g, '\r\n'));
+            } else {
+              writeBuffer.data += data.replace(/\n/g, '\r\n');
+              if (!writeBuffer.timeout) {
+                writeBuffer.timeout = setTimeout(() => writeBuffer.flush(), 8);
+              }
+            }
           }
           requestAnimationFrame(readFromPty);
         } catch (error) {
-          console.error("Error reading from PTY:", error);
-          requestAnimationFrame(readFromPty);
+          console.error("Read error:", error);
+          if (isReading) {
+            requestAnimationFrame(readFromPty);
+          }
         }
       };
 
-      term.onData(writeToPty);
-      window.addEventListener("resize", fitTerminal);
+      let resizeTimeout;
+      const handleResize = () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(async () => {
+          fitAddon.fit();
+          await invoke("async_resize_pty", {
+            rows: term.rows,
+            cols: term.cols,
+          });
+        }, 100);
+      };
 
-      initShell();
-      fitTerminal();
-      readFromPty();
+      term.onData(writeToPty);
+      window.addEventListener("resize", handleResize);
+
+      (async () => {
+        try {
+          await invoke("async_create_shell");
+          fitAddon.fit();
+          await invoke("async_resize_pty", {
+            rows: term.rows,
+            cols: term.cols,
+          });
+          readFromPty();
+        } catch (error) {
+          console.error("Initialization error:", error);
+        }
+      })();
 
       return () => {
-        window.removeEventListener("resize", fitTerminal);
+        isReading = false;
+        clearTimeout(writeBuffer.timeout);
+        clearTimeout(resizeTimeout);
+        window.removeEventListener("resize", handleResize);
         term.dispose();
       };
     }

@@ -468,29 +468,35 @@ async fn async_create_shell(state: State<'_, AppState>) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
-async fn async_write_to_pty(data: String, state: State<'_, AppState>) -> Result<(), String> {
-    let mut writer = state.writer.lock().await;
-    writer.write_all(data.as_bytes()).map_err(|err| err.to_string())?;
-    writer.flush().map_err(|err| err.to_string())?;
-    Ok(())
-}
+// Optimize the read buffer size
+const READ_BUFFER_SIZE: usize = 4096; // Reduced buffer size for lower latency
 
 #[tauri::command]
 async fn async_read_from_pty(state: State<'_, AppState>) -> Result<String, String> {
     let mut reader = state.reader.lock().await;
-    let mut buffer = [0u8; 1024];
-    let mut output = String::new();
+    let mut buffer = vec![0u8; READ_BUFFER_SIZE];
     
     match reader.read(&mut buffer) {
         Ok(n) if n > 0 => {
-            output.push_str(&String::from_utf8_lossy(&buffer[..n]));
-            Ok(output)
+            // Use from_utf8_lossy for better performance
+            Ok(String::from_utf8_lossy(&buffer[..n]).into_owned())
         }
         Ok(_) => Ok(String::new()),
         Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => Ok(String::new()),
         Err(e) => Err(e.to_string()),
     }
+}
+
+#[tauri::command]
+async fn async_write_to_pty(data: String, state: State<'_, AppState>) -> Result<(), String> {
+    let mut writer = state.writer.lock().await;
+    writer.write_all(data.as_bytes()).map_err(|err| err.to_string())?;
+    
+    // Flush immediately for single characters or newlines
+    if data.len() == 1 || data.contains('\n') {
+        writer.flush().map_err(|err| err.to_string())?;
+    }
+    Ok(())
 }
 
 #[tauri::command]
