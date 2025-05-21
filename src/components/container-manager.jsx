@@ -1,30 +1,34 @@
-import { useEffect, useState } from 'react';
-import { Box, Plus, Loader2 } from 'lucide-react';
-import { invoke } from '@tauri-apps/api/core';
-import { CreateContainerModal } from './create-container-modal';
-import { useNavigate } from 'react-router-dom';
-import { ContainerCardGrid } from './container-card-grid';
+import { useEffect, useState } from "react";
+import { Box, Plus, Loader2 } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
+import { CreateContainerModal } from "./create-container-modal";
+import { useNavigate } from "react-router-dom";
+import { ContainerCardGrid } from "./container-card-grid";
 
 export default function ContainerManager() {
   const [containers, setContainers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreatingContainer, setIsCreatingContainer] = useState(false);
   const navigate = useNavigate();
-  
+
   const [containerMetrics, setContainerMetrics] = useState({});
 
   const handleAddContainer = () => {
     setIsModalOpen(true);
   };
-  
-  const handleCreateContainer = async(containerData) => {
-    const response = await invoke('create_container', { 
-      container: containerData.name, 
-      image: containerData.customImage 
+
+  const handleCreateContainer = async (containerData) => {
+    setIsCreatingContainer(true);
+    const response = await invoke("create_container", {
+      container: containerData.name,
+      image: containerData.customImage,
     });
-    if(response) {
+    if (response) {
       setIsModalOpen(false);
-      navigate('/containers');
+
+      setIsCreatingContainer(false);
+      navigate("/containers");
     }
   };
 
@@ -34,24 +38,24 @@ export default function ContainerManager() {
 
   const fetchMetrics = async () => {
     try {
-      const metrics = await invoke('get_all_containers_status');
+      const metrics = await invoke("get_all_containers_status");
       const metricsMap = {};
-      
-      metrics.forEach(container => {
-        if (container.status === 'success' && container.stats) {
-          const cpuPercent = container.stats.CPUPerc || '0%';
-          const memPercent = container.stats.MemPerc || '0%';
-          
+
+      metrics.forEach((container) => {
+        if (container.status === "success" && container.stats) {
+          const cpuPercent = container.stats.CPUPerc || "0%";
+          const memPercent = container.stats.MemPerc || "0%";
+
           metricsMap[container.id] = {
-            cpu: parseFloat(cpuPercent.replace('%', '')),
-            memory: parseFloat(memPercent.replace('%', ''))
+            cpu: parseFloat(cpuPercent.replace("%", "")),
+            memory: parseFloat(memPercent.replace("%", "")),
           };
         }
       });
-      
+
       setContainerMetrics(metricsMap);
     } catch (error) {
-      console.error('Error fetching metrics:', error);
+      console.error("Error fetching metrics:", error);
     }
   };
 
@@ -59,23 +63,23 @@ export default function ContainerManager() {
     setIsLoading(true);
     const fetchContainers = async () => {
       try {
-        const response = await invoke('list_containers');
-        
+        const response = await invoke("list_containers");
+
         if (response) {
           setContainers(response);
-          await fetchMetrics();
+          // await fetchMetrics();
         }
       } catch (error) {
-        console.error('Error fetching containers:', error);
+        console.error("Error fetching containers:", error);
       } finally {
         setIsLoading(false);
       }
     };
     fetchContainers();
 
-    const metricsInterval = setInterval(fetchMetrics, 2000);
+    // const metricsInterval = setInterval(fetchMetrics, 2000);
 
-    return () => clearInterval(metricsInterval);
+    // return () => clearInterval(metricsInterval);
   }, []);
 
   if (isLoading) {
@@ -91,9 +95,12 @@ export default function ContainerManager() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
         <Box className="w-16 h-16 text-neutral-600 mb-6" />
-        <h2 className="text-3xl font-bold text-white mb-3">No Containers Found</h2>
+        <h2 className="text-3xl font-bold text-white mb-3">
+          No Containers Found
+        </h2>
         <p className="text-neutral-400 text-center mb-8 max-w-md">
-          It looks like you don&apos;t have any containers yet. Let&apos;s create one to get started!
+          It looks like you don&apos;t have any containers yet. Let&apos;s
+          create one to get started!
         </p>
         <button
           onClick={handleAddContainer}
@@ -102,10 +109,11 @@ export default function ContainerManager() {
           <Plus className="w-5 h-5" />
           <span>Create New Container</span>
         </button>
-        <CreateContainerModal 
-          isOpen={isModalOpen} 
-          onClose={() => setIsModalOpen(false)} 
-          onSubmit={handleCreateContainer} 
+        <CreateContainerModal
+          isLoading={isCreatingContainer}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={handleCreateContainer}
         />
       </div>
     );
@@ -122,17 +130,18 @@ export default function ContainerManager() {
           <Plus className="w-4 h-4" />
           <span>New Container</span>
         </button>
-        <CreateContainerModal 
+        <CreateContainerModal
+          isLoading={isCreatingContainer}
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           onSubmit={handleCreateContainer}
         />
       </div>
 
-      <ContainerCardGrid 
-        containers={containers.map(container => ({
+      <ContainerCardGrid
+        containers={containers.map((container) => ({
           ...container,
-          metrics: containerMetrics[container.ID] || { cpu: 0, memory: 0 }
+          metrics: containerMetrics[container.ID] || { cpu: 0, memory: 0 },
         }))}
         onManageContainer={handleManageContainer}
       />

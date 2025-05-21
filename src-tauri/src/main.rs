@@ -10,7 +10,8 @@ use lazy_static::lazy_static;
 use std::error::Error;
 use std::sync::Mutex;
 use std::fs::File;
-use std::path::Path;
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::str;
 use std::sync::Arc;
@@ -241,8 +242,9 @@ fn stop_container(container: &str) {
 }
 
 // --- Create Distro --- //
+
 #[tauri::command]
-fn create_container(container: &str, image: &str) {
+fn create_container(container: &str, image: &str) -> Result<String, String> {
     let output = Command::new("distrobox")
         .arg("create")
         .arg("--name")
@@ -254,23 +256,24 @@ fn create_container(container: &str, image: &str) {
 
     match output {
         Ok(output) if output.status.success() => {
-            println!(
+            Ok(format!(
                 "Container '{}' created successfully with image '{}'.",
                 container, image
-            );
+            ))
         }
         Ok(output) => {
-            eprintln!(
+            Err(format!(
                 "Can't create '{}': {}",
                 container,
                 String::from_utf8_lossy(&output.stderr)
-            );
+            ))
         }
         Err(e) => {
-            eprintln!("Failed to execute process: {}", e);
+            Err(format!("Failed to execute process: {}", e))
         }
     }
 }
+
 
 fn detect_container_runtime() -> Option<String> {
     let runtimes = ["podman", "docker", "lilypod"];
