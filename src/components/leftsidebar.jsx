@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
-import PropTypes from 'prop-types';
-import { Search,  ArrowLeftToLine } from "lucide-react";
+import PropTypes from "prop-types";
+import { Search, ArrowLeftToLine } from "lucide-react";
 import { CreateContainerModal } from "./create-container-modal";
 import { invoke } from "@tauri-apps/api/core";
 import { useNavigate } from "react-router-dom";
-import { DISTRO_ICONS } from '../utils/container-icons';
-import { extractDistroName } from '../utils/container-utils';
+import { DISTRO_ICONS } from "../utils/container-icons";
+import { extractDistroName } from "../utils/container-utils";
 
 export default function LeftSidebar({ isCollapsed, onToggle }) {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [distros, setDistros] = useState([])
+  const [distros, setDistros] = useState([]);
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [filteredDistros, setFilteredDistros] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -20,71 +20,72 @@ export default function LeftSidebar({ isCollapsed, onToggle }) {
     console.log("Creating container with data:", containerData);
   };
 
-  const handleBack = ()=>{
-    navigate('/containers');
-  }
+  const handleBack = () => {
+    navigate("/containers");
+  };
 
- const  handleSearchButton = ()=>{
-  if(!isModalOpen){
-    onToggle();
-    setIsSearchActive(!isSearchActive);}
-    else{
+  const handleSearchButton = () => {
+    if (!isModalOpen) {
+      onToggle();
+      setIsSearchActive(!isSearchActive);
+    } else {
       setIsSearchActive(!isSearchActive);
     }
-  }
-  
+  };
 
-  const handleContainerCard = (distro) =>{
-    return ()=>{
-      console.log('Selected container:',distro);
-      navigate('/container',{state:distro});
-    }
-  }
+  const handleContainerCard = (distro) => {
+    return () => {
+      console.log("Selected container:", distro);
+      navigate("/container", { state: distro });
+    };
+  };
 
   const handleSearch = (e) => {
     const term = e.target.value;
     setSearchTerm(term);
     setShowDropdown(true);
 
-    if (term.trim() === '') {
+    if (term.trim() === "") {
       setFilteredDistros([]);
       setShowDropdown(false);
       return;
     }
 
-    const filtered = distros.filter(distro =>
-      distro.NAME?.toLowerCase().includes(term.toLowerCase()) ||
-      distro.STATUS?.toLowerCase().includes(term.toLowerCase())
+    const filtered = distros.filter(
+      (distro) =>
+        distro.NAME?.toLowerCase().includes(term.toLowerCase()) ||
+        distro.STATUS?.toLowerCase().includes(term.toLowerCase())
     );
+
     setFilteredDistros(filtered);
-  }
+  };
 
   const handleDistroSelect = (distro) => {
     setSearchTerm(distro.NAME);
     setShowDropdown(false);
-    navigate('/container', { state: distro });
-  }
+    navigate("/container", { state: distro });
+  };
 
   useEffect(() => {
-   
-   const containers = async() =>{
-    try {
-        const response = await invoke('list_containers');
-        if(response){
-            console.log('Containers:',response);
-            setDistros(response);
-           
+    const fetchContainers = async () => {
+      try {
+        const response = await invoke("list_containers");
+        if (response) {
+          console.log("Containers:", response);
+          setDistros(response);
+        } else {
+          console.log("No containers found");
         }
-        else{
-            console.log('No containers found');
-           
-        }
+      } catch (error) {
+        console.log("Error fetching containers:", error);
+      }
+    };
 
-    } catch (error) {
-        console.log('Error fetching containers:',error);
-    }
-   }
-   containers();
+    // Poll every 2 seconds
+    const intervalId = setInterval(fetchContainers, 2000);
+
+    // Cleanup function to stop polling on unmount
+    return () => clearInterval(intervalId);
   }, []);
 
   return (

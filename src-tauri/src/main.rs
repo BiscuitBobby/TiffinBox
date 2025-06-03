@@ -4,13 +4,13 @@ use portable_pty::{native_pty_system, CommandBuilder, PtyPair, PtySize};
 use std::collections::{HashMap, HashSet};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read, Write};
 use serde_json::{json, Value};
 use lazy_static::lazy_static;
 use std::error::Error;
 use std::sync::Mutex;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::str;
@@ -242,8 +242,9 @@ fn stop_container(container: &str) {
 }
 
 // --- Create Distro --- //
+
 #[tauri::command]
-fn create_container(container: &str, image: &str) {
+fn create_container(container: &str, image: &str) -> Result<String, String> {
     let output = Command::new("distrobox")
         .arg("create")
         .arg("--name")
@@ -255,36 +256,49 @@ fn create_container(container: &str, image: &str) {
 
     match output {
         Ok(output) if output.status.success() => {
-            println!(
+            Ok(format!(
                 "Container '{}' created successfully with image '{}'.",
                 container, image
-            );
+            ))
         }
         Ok(output) => {
-            eprintln!(
+            Err(format!(
                 "Can't create '{}': {}",
                 container,
                 String::from_utf8_lossy(&output.stderr)
-            );
+            ))
         }
         Err(e) => {
-            eprintln!("Failed to execute process: {}", e);
+            Err(format!("Failed to execute process: {}", e))
         }
     }
 }
+
 
 fn detect_container_runtime() -> Option<String> {
     let runtimes = ["podman", "docker", "lilypod"];
 
     for runtime in runtimes.iter() {
-        if let Ok(output) = Command::new(runtime).arg("--version").output() {
-            if output.status.success() {
-                return Some(runtime.to_string());
+        match Command::new(runtime).arg("--version").output() {
+            Ok(output) => {
+                if output.status.success() {
+                    return Some(runtime.to_string());
+                } else {
+                    eprintln!(
+                        "Runtime '{}' found but returned error: {}",
+                        runtime,
+                        String::from_utf8_lossy(&output.stderr)
+                    );
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to execute '{} --version': {}", runtime, e);
             }
         }
     }
 
-    None // No container runtime found
+    eprintln!("No container runtime detected.");
+    None
 }
 
 
@@ -309,7 +323,7 @@ fn list_all_containers() -> Result<Vec<Value>, Box<dyn Error>> {
 
 // --- Get status of a container --- //
 #[tauri::command]
-fn get_container_status(cid: &str) -> Result<Vec<Value>, String> {
+fn get_container_status(cid: &str) -> Result<Value, String> {
     let runtime = detect_container_runtime().ok_or("No container runtime detected".to_string())?;
 
     let output = Command::new(&runtime)
@@ -322,15 +336,20 @@ fn get_container_status(cid: &str) -> Result<Vec<Value>, String> {
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);
 
-        // Parse the single JSON object and wrap it in a Vec
         let stats: Value = serde_json::from_str(&stdout).map_err(|e| e.to_string())?;
-        Ok(vec![stats])
+
+        println!("Container '{}' status: {}", cid, stats);
+
+        Ok(stats)  // Return the JSON object directly instead of wrapping in Vec
     } else {
-        Err(format!(
+        let error_msg = format!(
             "Failed to retrieve stats for '{}': {}",
             cid,
             String::from_utf8_lossy(&output.stderr)
-        ))
+        );
+
+        eprintln!("{}", error_msg);
+        Err(error_msg)
     }
 }
 
